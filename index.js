@@ -88,6 +88,7 @@ async function startBot() {
 
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 	
+		if (!text.trim()) return;
 
         // 🌟 TU LÓGICA ORIGINAL IMPLEMENTADA AL 100%
        let telefono = "";
@@ -108,7 +109,7 @@ async function startBot() {
         const myNumber = sock.user?.id?.split(":")[0];
         if (telefono === myNumber) return;
 
-        console.log("📩", telefono, "→", text);
+        console.log("📩", telefono, "→", text.trim());
 
         // INSERTAR EN BUZÓN DE ENTRADA
         await db.execute(
