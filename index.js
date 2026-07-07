@@ -57,9 +57,9 @@ async function startBot() {
       }
     });
 
- sock.ev.on("messages.upsert", async ({ messages }) => {
+  sock.ev.on("messages.upsert", async ({ messages }) => {
       try {
-        const msg = messages[0]; // Corrección: Tomamos el primer mensaje del array
+        const msg = messages[0]; // Tomamos el primer mensaje del array
         if (!msg?.message || msg.key.fromMe) return;
 
         const msgId = msg.key.id;
@@ -71,38 +71,36 @@ async function startBot() {
         if (from.endsWith("@g.us")) return;
 
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-        
-        // 🌟 TRUCO EXCLUSIVO: Obligar a Baileys a buscar el número de teléfono real detrás del ID
-        let telefono = from.split("@")[0]; // Por defecto toma lo que venga (ID o número)
-        
-        // Si viene un ID tipo LID o alternativo, intentamos extraer el número real desde los datos del mensaje
-        if (msg.key.participant) {
-          telefono = msg.key.participant.split("@")[0];
-        } else if (msg.verifiedBizName || msg.key.remoteJid.includes("@lid")) {
-          // Buscamos en el objeto del mensaje si Baileys guardó el número real mapeado
-          const jidFormateado = msg.key.remoteJid;
-          // Si el socket tiene guardado el contacto, extraemos el número real
-          const formateado = sock.utils?.jidToPhoneNumber ? sock.utils.jidToPhoneNumber(jidFormateado) : null;
-          if (formateado) {
-            telefono = formateado;
+
+        // 🌟 EXTRACTOR MEJORADO: Tu lógica original + captura de participant_pn para cuentas LID
+        let telefonoRaw = 
+          msg.key.remoteJidAlt?.replace("@s.whatsapp.net", "") || 
+          from.replace("@s.whatsapp.net", "").replace("@lid", "");
+
+        // Si viene de una cuenta LID (como el log de Ismael), buscamos el número real en los atributos
+        if (from.includes("@lid") || msg.message?.extendedTextMessage?.contextInfo?.participant?.includes("@lid")) {
+          // Si Baileys mapea el número real en las propiedades del mensaje, lo usamos
+          const pnAlternativo = msg.msgAttrs?.participant_pn || msg.participant_pn;
+          if (pnAlternativo) {
+            telefonoRaw = pnAlternativo.replace("@s.whatsapp.net", "");
           }
         }
-        
-        // Limpiamos cualquier rastro de caracteres no numéricos para que quede solo '5959...'
-        telefono = telefono.replace(/\D/g, "");
+
+        // Limpiamos cualquier rastro que no sea número para que quede puro (ej: 595985761431)
+        const telefono = telefonoRaw.replace(/\D/g, "");
 
         const myNumber = sock.user?.id?.split(":")[0];
         if (telefono === myNumber) return;
 
         console.log("📩 Número Real Detectado:", telefono, "→", text);
 
-        // REGISTRO EN EL BUZÓN DE ENTRADA CON EL NÚMERO REAL
+        // REGISTRO EN EL BUZÓN DE ENTRADA
         await db.execute(
           `INSERT INTO buzonentrada (numero, texto, tipo, data) VALUES (?, ?, 'mensaje', ?)`,
           [telefono, text, JSON.stringify(msg)]
         );
 
-        // ENVIAR AL ENRUTADOR DE COMANDOS MODULAR (Pasando el número real ya limpio)
+        // ENVIAR AL ENRUTADOR DE COMANDOS MODULAR
         await handleCommand(sock, msg, from, text, telefono, userState);
 
       } catch (err) {
