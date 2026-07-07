@@ -28,7 +28,19 @@ async function startBot() {
       version,
       auth: state,
       browser: ["Windows", "Chrome", "10"],
+      
+      // 🌟 AGREGAR ESTAS PROPIEDADES CLAVE PARA EVITAR EL TIMED OUT 🌟
+      syncFullHistory: false,          // Evita descargar chats antiguos e historiales pesados
+      shouldSyncHistoryMessage: () => false, // Bloquea por completo la sincronización de mensajes viejos
+      markOnlineOnConnect: false,      // No fuerza el estado online de inmediato para aliviar la conexión
+      emitOwnEvents: false,            // Evita procesar eventos generados por el mismo bot
+      
+      // Control de tiempo de espera para que no colapse la inicialización
+      defaultQueryTimeoutMs: 60000,    // Eleva el tiempo de espera a 60 segundos antes de dar un Time Out
     });
+
+
+	
 
     sock.ev.on("creds.update", saveCreds);
 
@@ -56,6 +68,9 @@ async function startBot() {
         }
       }
     });
+	
+	
+	
 
   sock.ev.on("messages.upsert", async ({ messages }) => {
       try {
@@ -72,11 +87,23 @@ async function startBot() {
         if (from.endsWith("@g.us")) return;
 
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+	
 
         // 🌟 TU LÓGICA ORIGINAL IMPLEMENTADA AL 100%
-        const telefono =
-          msg.key.remoteJidAlt?.replace("@s.whatsapp.net", "") ||
-          from.replace("@s.whatsapp.net", "").replace("@lid", "");
+       let telefono = "";
+
+		if (msg.key.remoteJidAlt) {
+		telefono = msg.key.remoteJidAlt;
+		} else if (msg.key.senderPn) {
+		telefono = msg.key.senderPn;
+		} else {
+		telefono = msg.key.remoteJid;
+		}
+
+		telefono = telefono
+		.replace("@s.whatsapp.net", "")
+		.replace("@lid", "")
+		.replace(/\D/g, "");
 
         const myNumber = sock.user?.id?.split(":")[0];
         if (telefono === myNumber) return;
