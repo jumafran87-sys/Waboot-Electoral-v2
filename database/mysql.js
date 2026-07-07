@@ -8,7 +8,7 @@ export async function connectDB() {
       host: "localhost",
       user: "root",
       password: "",
-      database: "padron_2026",
+      database: "padron_gral",
       waitForConnections: true,
       connectionLimit: 10,
     });

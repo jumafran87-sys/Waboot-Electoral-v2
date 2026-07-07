@@ -97,7 +97,7 @@ export async function handleCommand(sock, msg, from, text, telefono, userState) 
     });
     return;
   }
-
+	let bloqueMapa = "";
   // 6. CONSULTA DE CÉDULA AUTOMÁTICA (Si el texto es numérico)
   if (/^\d+$/.test(cleanText)) {
     try {
@@ -115,9 +115,12 @@ export async function handleCommand(sock, msg, from, text, telefono, userState) 
       if (ciudadano.direccion) {
         bloqueMapa += `📍 ${ciudadano.direccion}\n`;
       }
-      if (ciudadano.latitud && ciudadano.longitud) {
-        bloqueMapa += `\n🌐 Ubicación en Google Maps:\nhttps://google.com{ciudadano.latitud},${ciudadano.longitud}\n`;
-      }
+     if (ciudadano.latitud && ciudadano.longitud) {
+	bloqueMapa += `
+	🌐 Ubicación en Google Maps:
+	https://maps.google.com/?q=${ciudadano.latitud},${ciudadano.longitud}
+	`;
+	}
 
       const plantilla = `🇵🇾 PADRÓN ELECTORAL
 
