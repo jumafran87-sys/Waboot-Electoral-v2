@@ -1,54 +1,34 @@
-// 6. CONSULTA DE CÉDULA AUTOMÁTICA
-  if (/^\d+$/.test(cleanText)) {
-    try {
-      const ciudadano = await consultarPadron(cleanText);
+import { db } from "../database/mysql.js";
 
-      if (!ciudadano) {
-        await sock.sendMessage(from, { text: `❌ No se encontró ningún registro para la C.I. Nº ${cleanText}` });
-        return;
-      }
+export async function consultarPadron(cedula) {
+  try {
+    // 1. Obtener la tabla electoral activa
+    const [config] = await db.execute(
+      "SELECT tabla_padron FROM config_eleccion WHERE estado = 1 LIMIT 1"
+    );
 
-      // Formatear Fecha y Género de forma limpia
-      const fechaNac = ciudadano.FEC_NAC ? new Date(ciudadano.FEC_NAC).toLocaleDateString('es-PY') : '-';
-      const genero = ciudadano.SEXO === 'M' ? 'Masculino' : ciudadano.SEXO === 'F' ? 'Femenino' : '-';
+    const nombreTablaPadron = config.length > 0 ? config[0].tabla_padron : "regciv";
 
-      // Construcción del mapa si existen coordenadas en tu tabla 'loc'
-      let bloqueMapa = "";
-      if (ciudadano.direccion) {
-        bloqueMapa += `📍 ${ciudadano.direccion}\n`;
-      }
-      if (ciudadano.latitud && ciudadano.longitud) {
-        bloqueMapa += `\n🌐 Ubicación en Google Maps:\nhttps://google.com{ciudadano.latitud},${ciudadano.longitud}\n`;
-      }
+    // 2. Consulta unificada adaptada a tu base de datos de la Justicia Electoral
+    const query = `
+      SELECT 
+        r.CEDULA, r.NOMBRE, r.APELLIDO, r.FEC_NAC, r.SEXO,
+        d.DESCRIP AS departamento,
+        di.DESCRIP AS distrito,
+        l.DESCRIP AS local,
+        l.direccion, l.latitud, l.longitud
+      FROM ${nombreTablaPadron} r
+      LEFT JOIN dep d ON d.DEPART = r.DEPART
+      LEFT JOIN dis di ON di.DEPART = r.DEPART AND di.DISTRITO = r.DISTRITO
+      LEFT JOIN loc l ON l.DPTO = r.DEPART AND l.DISTRITO = r.DISTRITO AND l.ZONA = r.ZONA AND l.LOCAL = r.LOCAL
+      WHERE r.CEDULA = ? 
+      LIMIT 1;
+    `;
 
-      const plantilla = `🇵🇾 PADRÓN ELECTORAL
-
-👤 ${ciudadano.NOMBRE} ${ciudadano.APELLIDO}
-
-🆔 C.I.
-${ciudadano.CEDULA}
-
-🎂 ${fechaNac}
-
- ${genero}
-
-📍 Departamento
-${ciudadano.departamento || "CENTRAL"}
-
-🏙 Distrito
-${ciudadano.distrito || "MARIANO ROQUE ALONSO"}
-
-🏫 Local de votación
-${ciudadano.local || "Colegio Nacional Mariano Roque Alonso"}
-${bloqueMapa}
-━━━━━━━━━━━━━━
-
-Escriba otra cédula o un nombre.`;
-
-      await sock.sendMessage(from, { text: plantilla });
-    } catch (err) {
-      console.error(err);
-      await sock.sendMessage(from, { text: "❌ Ocurrió un error al procesar la consulta en el padrón." });
-    }
-    return;
+    const [rows] = await db.execute(query, [cedula]);
+    return rows.length > 0 ? rows[0] : null;
+  } catch (error) {
+    console.error("❌ Error al consultar el padrón real:", error);
+    throw error;
   }
+}
