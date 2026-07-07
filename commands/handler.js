@@ -8,14 +8,13 @@ export async function handleCommand(sock, msg, from, text, telefono, userState) 
   const cleanText = text.trim();
   const cleanLower = cleanText.toLowerCase();
 
-  // Ahora 'telefono' viene directo como tu número real (ej: 595985761431)
+  // Validación exacta de operador por número telefónico puro
   const [op] = await db.execute(
     `SELECT id FROM operadores WHERE telefono = ? AND activo = 1 LIMIT 1`,
     [telefono]
   );
 
-  // Si eres el dueño del bot (ADMIN) o estás en la tabla, pasas la seguridad
-  if (op.length === 0 && telefono !== ADMIN) {
+  if (op.length === 0) {
     await sock.sendMessage(from, { text: "⛔ No estás autorizado para usar este sistema." });
     return;
   }
