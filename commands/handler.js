@@ -2,19 +2,20 @@ import { exec } from "child_process";
 import { db } from "../database/mysql.js";
 import { consultarPadron } from "../services/padronService.js";
 
-const ADMIN = "595985761431";
+const ADMIN = "595985761431"; 
 
 export async function handleCommand(sock, msg, from, text, telefono, userState) {
   const cleanText = text.trim();
   const cleanLower = cleanText.toLowerCase();
 
-  // 1. VALIDAR OPERADOR
+  // Ahora 'telefono' viene directo como tu número real (ej: 595985761431)
   const [op] = await db.execute(
     `SELECT id FROM operadores WHERE telefono = ? AND activo = 1 LIMIT 1`,
     [telefono]
   );
 
-  if (op.length === 0) {
+  // Si eres el dueño del bot (ADMIN) o estás en la tabla, pasas la seguridad
+  if (op.length === 0 && telefono !== ADMIN) {
     await sock.sendMessage(from, { text: "⛔ No estás autorizado para usar este sistema." });
     return;
   }
