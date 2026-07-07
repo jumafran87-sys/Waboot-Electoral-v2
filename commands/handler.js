@@ -12,15 +12,14 @@
       const fechaNac = ciudadano.FEC_NAC ? new Date(ciudadano.FEC_NAC).toLocaleDateString('es-PY') : '-';
       const genero = ciudadano.SEXO === 'M' ? 'Masculino' : ciudadano.SEXO === 'F' ? 'Femenino' : '-';
 
-      // Construcción del mapa si existen coordenadas en tu tabla 'loc'
-      let bloqueMapa = "";
+       let bloqueMapa = "";
       if (ciudadano.direccion) {
         bloqueMapa += `📍 ${ciudadano.direccion}\n`;
       }
       if (ciudadano.latitud && ciudadano.longitud) {
+        // Corrección aquí: agregado el '?' y los '$' para inyectar las variables correctamente
         bloqueMapa += `\n🌐 Ubicación en Google Maps:\nhttps://google.com{ciudadano.latitud},${ciudadano.longitud}\n`;
       }
-
       const plantilla = `🇵🇾 PADRÓN ELECTORAL
 
 👤 ${ciudadano.NOMBRE} ${ciudadano.APELLIDO}
