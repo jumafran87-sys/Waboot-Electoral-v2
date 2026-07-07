@@ -1,9 +1,11 @@
 {
+  "name": "waboot-electoral-v2",
+  "version": "1.0.0",
+  "type": "module",
   "dependencies": {
     "@hapi/boom": "^10.0.1",
-	"type": "module",
-    "@whiskeysockets/baileys": "^7.0.0-rc13",
-    "mysql2": "^3.22.5",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "mysql2": "^3.12.0",
     "qrcode-terminal": "^0.12.0"
   }
 }
