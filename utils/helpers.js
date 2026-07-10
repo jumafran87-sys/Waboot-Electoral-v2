@@ -6,3 +6,4 @@ export function formatearWaMe(num) {
   if (n.startsWith("9")) return `wa.me/595${n}`;
   return `wa.me/595${n}`;
 }
+
