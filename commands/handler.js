@@ -225,6 +225,84 @@ export async function handleCommand(
     return;
   }
 
+// ================== GUARDAR ASIGNACIÓN ==================
+if (userState[from]?.action === "preguntar_guardar") {
+
+    const respuesta = cleanText.toUpperCase();
+
+    if (!["S","N"].includes(respuesta)) {
+
+        await sock.sendMessage(from,{
+            text:"✍️ Respondé *S* o *N*."
+        });
+
+        return;
+    }
+
+    if (respuesta === "N") {
+
+        delete userState[from];
+
+        await sock.sendMessage(from,{
+            text:"❌ Registro cancelado.\n\nPodés consultar otra cédula."
+        });
+
+        return;
+    }
+
+    const { cedula, datos } = userState[from];
+
+    await db.execute(
+        `INSERT INTO asignaciones
+        (
+            operador_telefono,
+            cedula,
+            nombre,
+            apellido,
+            local,
+            mesa,
+            orden,
+            celular
+        )
+        VALUES (?,?,?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE
+            nombre=VALUES(nombre),
+            apellido=VALUES(apellido),
+            local=VALUES(local),
+            mesa=VALUES(mesa),
+            orden=VALUES(orden),
+            celular=VALUES(celular),
+            fechahora=CURRENT_TIMESTAMP`,
+        [
+            telefono,
+            cedula,
+            datos.nombre,
+            datos.apellido,
+            datos.local,
+            datos.mesa,
+            datos.orden,
+            datos.celular
+        ]
+    );
+
+    userState[from]={
+        action:"preguntar_actualizar",
+        cedula
+    };
+
+    await sock.sendMessage(from,{
+        text:
+`✅ Asignación registrada correctamente.
+
+¿Desea actualizar datos?
+
+*S* = Sí
+*N* = No`
+    });
+
+    return;
+}
+
 
   // ===================================================
   // CONSULTA POR CÉDULA
@@ -288,8 +366,23 @@ ${ciudadano.local || "-"}
 
 ━━━━━━━━━━━━━━
 
-Escriba otra cédula o un nombre.`;
+¿Desea guardar esta asignación?
+Responda *S* o *N*.`;
 
+
+
+	userState[from] = {
+    action: "preguntar_guardar",
+    cedula: ciudadano.CEDULA,
+    datos: {
+        nombre: ciudadano.NOMBRE,
+        apellido: ciudadano.APELLIDO,
+        local: ciudadano.local,
+        mesa: ciudadano.MESA || null,
+        orden: ciudadano.ORDEN || null,
+        celular: ciudadano.CELULAR || null
+    }
+};
 
       await sock.sendMessage(from, {
         text: plantilla
@@ -351,6 +444,7 @@ Escriba otra cédula o un nombre.`;
 
 
       if (resultados.length === 0) {
+
 
 
         await sock.sendMessage(from, {
