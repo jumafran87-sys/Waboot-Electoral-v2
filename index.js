@@ -86,9 +86,21 @@ async function startBot() {
         const from = msg.key.remoteJid;
         if (from.endsWith("@g.us")) return;
 
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-	
-		if (!text.trim()) return;
+        const text =
+	msg.message.conversation ||
+	msg.message.extendedTextMessage?.text ||
+	"";
+
+
+	// Permitimos mensajes sin texto si son ubicaciones
+	const tieneUbicacion =
+	msg.message.locationMessage ||
+	msg.message?.ephemeralMessage?.message?.locationMessage ||
+	msg.message?.viewOnceMessage?.message?.locationMessage ||
+	msg.message?.viewOnceMessageV2?.message?.locationMessage;
+
+
+if (!text.trim() && !tieneUbicacion) return;
 
         // 🌟 TU LÓGICA ORIGINAL IMPLEMENTADA AL 100%
        let telefono = "";
@@ -108,8 +120,17 @@ async function startBot() {
 
         const myNumber = sock.user?.id?.split(":")[0];
         if (telefono === myNumber) return;
+		
+		
 
-        console.log("📩", telefono, "→", text.trim());
+        console.log(
+		"📩",
+		telefono,
+		"→",
+		text.trim() || "📍 UBICACION"
+		);
+
+
 
         // INSERTAR EN BUZÓN DE ENTRADA
         await db.execute(

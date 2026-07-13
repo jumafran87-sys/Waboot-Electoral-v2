@@ -574,103 +574,50 @@ N = No`
 // ================== ACTUALIZAR UBICACIÓN ==================
 
 if (userState[from]?.action === "actualizar_ubicacion") {
-	
-	
-	console.log(
-	"MENSAJE COMPLETO UBICACION:",
-	JSON.stringify(msg.message, null, 2)
-	);
-	
 
     const cedula = userState[from].cedula;
 
     let ubicacion = null;
 
-    // ================== UBICACIÓN GPS WHATSAPP ==================
+    // Si envía ubicación de WhatsApp
+    if (msg.message?.locationMessage) {
 
-    let locationMsg = null;
+        const loc = msg.message.locationMessage;
 
+        ubicacion = `${loc.degreesLatitude},${loc.degreesLongitude}`;
 
-// ubicación normal
-if (msg.message?.locationMessage) {
+    } else {
 
-    locationMsg = msg.message.locationMessage;
+        // Google Maps
+       // Intentar extraer coordenadas desde distintos formatos de Google Maps
 
-}
+	const texto = decodeURIComponent(cleanText);
 
-
-// ubicación dentro de mensaje efímero
-else if (
-    msg.message?.ephemeralMessage?.message?.locationMessage
-) {
-
-    locationMsg =
-        msg.message.ephemeralMessage.message.locationMessage;
-
-}
-
-
-// ubicación dentro de viewOnce
-else if (
-    msg.message?.viewOnceMessage?.message?.locationMessage
-) {
-
-    locationMsg =
-        msg.message.viewOnceMessage.message.locationMessage;
-
-}
-
-
-if (locationMsg) {
-
-    ubicacion =
-        `${locationMsg.degreesLatitude},${locationMsg.degreesLongitude}`;
-
-} 
-    
-    // ================== GOOGLE MAPS ==================
-
-    else {
-
-        const texto = decodeURIComponent(cleanText);
-
-        console.log("📍 Texto ubicación recibido:", texto);
-
-
-        const urlMatch =
-            texto.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-            texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-
+	const urlMatch =
+    texto.match(/@([-0-9.]+),([-0-9.]+)/) ||
+    texto.match(/[?&]q=([-0-9.]+),([-0-9.]+)/) ||
+    texto.match(/([-0-9.]+),\s*([-0-9.]+)/);
 
         if (urlMatch) {
 
-            ubicacion =
-                `${urlMatch[1]},${urlMatch[2]}`;
+            ubicacion = `${urlMatch[1]},${urlMatch[2]}`;
 
-        } 
-        
-        else {
+        } else {
 
+            // Texto cualquiera
             ubicacion = cleanText.trim();
 
         }
     }
 
-
     if (!ubicacion || ubicacion.length < 3) {
 
-        await sock.sendMessage(from,{
-            text:"❌ No se pudo detectar la ubicación."
+        await sock.sendMessage(from, {
+            text: "❌ No se pudo detectar la ubicación."
         });
 
         return;
     }
-
-
-    console.log("📍 Guardando ubicación:", ubicacion);
-    console.log("📍 Cedula:", cedula);
-    console.log("📍 Operador:", telefono);
-
 
     await db.execute(
         `UPDATE asignaciones
@@ -685,27 +632,29 @@ if (locationMsg) {
         ]
     );
 
-
     userState[from] = {
-        action:"preguntar_actualizar",
+        action: "preguntar_actualizar",
         cedula
     };
 
+userState[from] = {
+    action: "preguntar_actualizar",
+    cedula
+};
 
-    await sock.sendMessage(from,{
-        text:
+await sock.sendMessage(from, {
+    text:
 `✅ Ubicación registrada.
 
-📍 https://maps.google.com/?q=${ubicacion}
+🌎 https://maps.google.com/?q=${ubicacion}
 
 ¿Desea actualizar algo más?
 
-*S* = Sí
-*N* = No`
-    });
+S = Sí
+N = No`
+});
 
-
-    return;
+return;
 }
 
   // ===================================================
