@@ -303,7 +303,273 @@ if (userState[from]?.action === "preguntar_guardar") {
     return;
 }
 
+// ================== PREGUNTAR ACTUALIZAR ==================
 
+if (userState[from]?.action === "preguntar_actualizar") {
+
+    const respuesta = cleanText.toUpperCase();
+
+    if (respuesta === "S") {
+
+        userState[from].action = "menu_actualizar";
+
+        await sock.sendMessage(from,{
+            text:
+`🛠 ACTUALIZAR DATOS
+
+A) 📲 Celular
+B) 📍 Ubicación
+C) 📝 Observación
+D) ❌ Salir
+
+Respondé A, B, C o D`
+        });
+
+        return;
+    }
+
+
+    if (respuesta === "N") {
+
+        delete userState[from];
+
+        await sock.sendMessage(from,{
+            text:
+            "✅ Listo.\n\nPuede consultar otra cédula."
+        });
+
+        return;
+    }
+
+
+    await sock.sendMessage(from,{
+        text:
+        "✍️ Respondé S para actualizar o N para salir."
+    });
+
+    return;
+}
+
+// ================== MENU ACTUALIZAR ==================
+
+if (userState[from]?.action === "menu_actualizar") {
+
+    const respuesta = cleanText.toUpperCase();
+
+    const cedula = userState[from].cedula;
+
+
+    if (respuesta === "A") {
+
+        userState[from]={
+            action:"actualizar_celular",
+            cedula
+        };
+
+
+        await sock.sendMessage(from,{
+            text:
+            "📲 Enviá el nuevo número de celular."
+        });
+
+        return;
+    }
+
+
+    if (respuesta === "B") {
+
+        userState[from]={
+            action:"actualizar_ubicacion",
+            cedula
+        };
+
+
+        await sock.sendMessage(from,{
+            text:
+            "📍 Enviá ubicación GPS o link Google Maps."
+        });
+
+        return;
+    }
+
+
+    if (respuesta === "C") {
+
+        userState[from]={
+            action:"actualizar_observacion",
+            cedula
+        };
+
+
+        await sock.sendMessage(from,{
+            text:
+            "📝 Enviá la observación."
+        });
+
+        return;
+    }
+
+
+    if (respuesta === "D") {
+
+        delete userState[from];
+
+        await sock.sendMessage(from,{
+            text:
+            "✅ Saliste del menú.\nPuede consultar otra cédula."
+        });
+
+        return;
+    }
+
+
+    await sock.sendMessage(from,{
+        text:
+        "✍️ Opción inválida. Elegí A, B, C o D."
+    });
+
+    return;
+}
+
+// ================== MENU ACTUALIZAR ==================
+
+if (userState[from]?.action === "menu_actualizar") {
+
+    const respuesta = cleanText.toUpperCase();
+
+    const cedula = userState[from].cedula;
+
+
+    // ================== ACTUALIZAR CELULAR ==================
+
+    if (respuesta === "A") {
+
+        userState[from] = {
+            action: "actualizar_celular",
+            cedula
+        };
+
+
+        await sock.sendMessage(from, {
+            text:
+            "📲 Enviá el nuevo número de celular."
+        });
+
+        return;
+    }
+
+
+    // ================== ACTUALIZAR UBICACIÓN ==================
+
+    if (respuesta === "B") {
+
+        userState[from] = {
+            action: "actualizar_ubicacion",
+            cedula
+        };
+
+
+        await sock.sendMessage(from, {
+            text:
+            "📍 Enviá ubicación GPS o link de Google Maps."
+        });
+
+        return;
+    }
+
+
+    // ================== ACTUALIZAR OBSERVACIÓN ==================
+
+    if (respuesta === "C") {
+
+        userState[from] = {
+            action: "actualizar_observacion",
+            cedula
+        };
+
+
+        await sock.sendMessage(from, {
+            text:
+            "📝 Enviá la observación que deseas guardar."
+        });
+
+        return;
+    }
+
+
+    // ================== SALIR ==================
+
+    if (respuesta === "D") {
+
+        delete userState[from];
+
+
+        await sock.sendMessage(from, {
+            text:
+            "✅ Saliste del menú.\n\nPodés consultar otra cédula."
+        });
+
+        return;
+    }
+
+
+    await sock.sendMessage(from, {
+        text:
+        "✍️ Opción inválida.\n\nRespondé A, B, C o D."
+    });
+
+    return;
+}
+
+// ================== ACTUALIZAR CELULAR ==================
+
+if (userState[from]?.action === "actualizar_celular") {
+
+    const cedula = userState[from].cedula;
+
+    const nuevoCel = cleanText.replace(/\D/g, "");
+
+    if (!/^\d{8,13}$/.test(nuevoCel)) {
+
+        await sock.sendMessage(from,{
+            text:"❌ Número inválido."
+        });
+
+        return;
+    }
+
+    await db.execute(
+        `UPDATE asignaciones
+            SET celunew = ?,
+                fechahora = CURRENT_TIMESTAMP
+          WHERE operador_telefono = ?
+            AND cedula = ?`,
+        [
+            nuevoCel,
+            telefono,
+            cedula
+        ]
+    );
+
+    userState[from] = {
+        action:"preguntar_actualizar",
+        cedula
+    };
+
+    await sock.sendMessage(from,{
+        text:
+`✅ Celular actualizado:
+
+${nuevoCel}
+
+¿Desea actualizar algo más?
+
+S = Sí
+N = No`
+    });
+
+    return;
+}
   // ===================================================
   // CONSULTA POR CÉDULA
   // ===================================================
