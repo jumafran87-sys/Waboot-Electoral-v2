@@ -395,19 +395,18 @@ if (userState[from]?.action === "menu_actualizar") {
 
     if (respuesta === "C") {
 
-        userState[from]={
-            action:"actualizar_observacion",
-            cedula
-        };
+    userState[from] = {
+        action:"actualizar_observacion",
+        cedula
+    };
 
+    await sock.sendMessage(from,{
+        text:
+        "📝 Enviá la observación que deseas guardar."
+    });
 
-        await sock.sendMessage(from,{
-            text:
-            "📝 Enviá la observación."
-        });
-
-        return;
-    }
+    return;
+}
 
 
     if (respuesta === "D") {
@@ -707,6 +706,72 @@ if (locationMsg) {
 
     return;
 }
+
+// ================== ACTUALIZAR OBSERVACIÓN ==================
+
+if (userState[from]?.action === "actualizar_observacion") {
+
+    const cedula = userState[from].cedula;
+
+    const observacion = cleanText.trim();
+
+
+    if (!observacion) {
+
+        await sock.sendMessage(from,{
+            text:"❌ Observación vacía."
+        });
+
+        return;
+    }
+
+
+    console.log("📝 Guardando observación:", observacion);
+    console.log("🆔 Cedula:", cedula);
+
+
+    const [resultado] = await db.execute(
+        `UPDATE asignaciones
+            SET observacion = ?,
+                fechahora = CURRENT_TIMESTAMP
+          WHERE operador_telefono = ?
+            AND cedula = ?`,
+        [
+            observacion,
+            telefono,
+            cedula
+        ]
+    );
+
+
+    console.log(
+        "Filas actualizadas:",
+        resultado.affectedRows
+    );
+
+
+    userState[from] = {
+        action:"preguntar_actualizar",
+        cedula
+    };
+
+
+    await sock.sendMessage(from,{
+        text:
+`📝 Observación guardada correctamente.
+
+"${observacion}"
+
+¿Desea actualizar algo más?
+
+*S* = Sí
+*N* = No`
+    });
+
+
+    return;
+}
+
 
   // ===================================================
   // CONSULTA POR CÉDULA
