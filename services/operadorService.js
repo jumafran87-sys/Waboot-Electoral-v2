@@ -1,35 +1,56 @@
 import { db } from "../database/mysql.js";
 
-export async function obtenerModoBot() {
+export async function validarOperador(telefono) {
 
-    try {
+    const [rows] = await db.execute(
+        `SELECT *
+           FROM operadores
+          WHERE telefono = ?
+            AND activo = 1
+          LIMIT 1`,
+        [telefono]
+    );
 
-        const [rows] = await db.execute(
-            "SELECT modo FROM config_bot WHERE id = 1"
-        );
-
-        if (rows.length > 0) {
-            return rows[0].modo;
-        }
-
-        return "CONSULTA";
-
-    } catch (err) {
-
-        console.log("⚠️ No existe config_bot. Usando modo CONSULTA");
-
-        return "CONSULTA";
+    if (rows.length === 0) {
+        return null;
     }
+
+    return rows[0];
+}
+
+export async function altaOperador(
+    telefono,
+    nombre
+) {
+
+    await db.execute(
+        `INSERT INTO operadores
+            (telefono,nombre,activo)
+         VALUES
+            (?, ?,1)
+         ON DUPLICATE KEY UPDATE
+            nombre=VALUES(nombre),
+            activo=1`,
+        [
+            telefono,
+            nombre
+        ]
+    );
 
 }
 
-export async function cambiarModoBot(modo) {
+export async function obtenerOperador(
+    telefono
+) {
 
-    await db.execute(
-        `UPDATE config_bot
-            SET modo = ?
-          WHERE id = 1`,
-        [modo.toUpperCase()]
+    const [rows] = await db.execute(
+        `SELECT *
+           FROM operadores
+          WHERE telefono=?
+          LIMIT 1`,
+        [telefono]
     );
+
+    return rows[0] || null;
 
 }

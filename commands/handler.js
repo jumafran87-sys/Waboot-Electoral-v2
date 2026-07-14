@@ -12,6 +12,15 @@ import {
 } from "../services/configBotService.js";
 
 
+import {
+    validarOperador,
+    altaOperador
+} from "../services/operadorService.js";
+
+import {
+    guardarAsignacion
+} from "../services/asignacionService.js";
+
 const ADMIN = "595985761431";
 
 export async function handleCommand(
@@ -34,21 +43,15 @@ console.log("🟢 MODO BOT:", modo);
   // VALIDAR OPERADOR
   // ===================================================
 
-  const [op] = await db.execute(
-    `SELECT id
-       FROM operadores
-      WHERE telefono = ?
-        AND activo = 1
-      LIMIT 1`,
-    [telefono]
-  );
 
-  if (op.length === 0) {
+  const op = await validarOperador(telefono);
+
+	if (!op) {
     await sock.sendMessage(from, {
-      text: "⛔ No estás autorizado para usar este sistema."
+        text: "⛔ No estás autorizado para usar este sistema."
     });
     return;
-  }
+	}
 
   // ===================================================
   // RESTART
@@ -172,16 +175,10 @@ VOTACION`
 
     try {
 
-      await db.execute(
-        `INSERT INTO operadores
-            (telefono, nombre, activo)
-         VALUES
-            (?, ?, 1)
-         ON DUPLICATE KEY UPDATE
-            nombre = VALUES(nombre),
-            activo = 1`,
-        [nuevoTelefono, nombre]
-      );
+     await altaOperador(
+    nuevoTelefono,
+    nombre
+	);
 
       await sock.sendMessage(from, {
         text:
@@ -496,42 +493,29 @@ if (userState[from]?.action === "preguntar_guardar") {
 	
 	
 
-    await db.execute(
-    `INSERT INTO asignaciones
-    (
-        operador_telefono,
-        cedula,
-        nombre,
-        apellido,
-        local,
-        mesa,
-        orden,
-        celular,
-        ciudad,
-        candidato_id
-    )
-    VALUES (?,?,?,?,?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE
-            nombre=VALUES(nombre),
-            apellido=VALUES(apellido),
-            local=VALUES(local),
-            mesa=VALUES(mesa),
-            orden=VALUES(orden),
-            celular=VALUES(celular),
-            fechahora=CURRENT_TIMESTAMP`,
-        [
-		telefono,
-		cedula,
-		datos.nombre,
-		datos.apellido,
-		datos.local,
-		datos.mesa,
-		datos.orden,
-		datos.celular,
-		ciudad,
-		candidato_id
-		]
-    );
+   await guardarAsignacion({
+
+    operador: telefono,
+
+    cedula,
+
+    nombre: datos.nombre,
+
+    apellido: datos.apellido,
+
+    local: datos.local,
+
+    mesa: datos.mesa,
+
+    orden: datos.orden,
+
+    celular: datos.celular,
+
+    ciudad: null,
+
+    candidato_id: null
+
+});
 
     userState[from]={
         action:"preguntar_actualizar",
