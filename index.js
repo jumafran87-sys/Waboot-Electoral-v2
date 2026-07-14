@@ -130,6 +130,7 @@ if (!text.trim() && !tieneUbicacion) return;
 		text.trim() || "📍 UBICACION"
 		);
 
+		//console.log("🟢 MODO BOT:", modo);
 
 
         // INSERTAR EN BUZÓN DE ENTRADA

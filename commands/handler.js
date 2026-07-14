@@ -1,9 +1,16 @@
 import { exec } from "child_process";
 import { db } from "../database/mysql.js";
+
 import {
   consultarPadron,
   buscarPorNombre
 } from "../services/padronService.js";
+
+import {
+    obtenerModoBot,
+    cambiarModoBot
+} from "../services/configBotService.js";
+
 
 const ADMIN = "595985761431";
 
@@ -16,8 +23,12 @@ export async function handleCommand(
   userState
 ) {
 
-  const cleanText = text.trim();
-  const cleanLower = cleanText.toLowerCase();
+const cleanText = text.trim();
+const cleanLower = cleanText.toLowerCase();
+
+const modo = await obtenerModoBot();
+
+console.log("🟢 MODO BOT:", modo);
 
   // ===================================================
   // VALIDAR OPERADOR
@@ -74,6 +85,55 @@ export async function handleCommand(
 
     return;
   }
+  
+  // ===================================================
+// CAMBIAR MODO DEL BOT (ADMIN)
+// ===================================================
+
+if (cleanLower.startsWith("modo ")) {
+
+    if (telefono !== ADMIN) {
+
+        await sock.sendMessage(from, {
+            text: "⛔ No autorizado."
+        });
+
+        return;
+    }
+
+    const nuevoModo =
+        cleanLower.replace("modo ", "").trim().toUpperCase();
+
+    const modosValidos = [
+        "CONSULTA",
+        "ACTUALIZACION",
+        "VOTACION"
+    ];
+
+    if (!modosValidos.includes(nuevoModo)) {
+
+        await sock.sendMessage(from, {
+            text:
+`Modos disponibles:
+
+CONSULTA
+ACTUALIZACION
+VOTACION`
+        });
+
+        return;
+    }
+
+    await cambiarModoBot(nuevoModo);
+
+    await sock.sendMessage(from, {
+        text: `✅ Modo cambiado a *${nuevoModo}*.`
+    });
+
+    return;
+}
+  
+  
 
   // ===================================================
   // ALTA OPERADOR
@@ -224,6 +284,116 @@ export async function handleCommand(
 
     return;
   }
+  
+// ===================================================
+// REGISTRAR VOTO
+// ===================================================
+
+if (userState[from]?.action === "preguntar_voto") {
+
+    const respuesta = cleanText.toUpperCase();
+
+    const cedula = userState[from].cedula;
+
+    const datos = userState[from].datos;
+
+
+    if (!["S","N"].includes(respuesta)) {
+
+        await sock.sendMessage(from,{
+            text:"✍️ Respondé S o N."
+        });
+
+        return;
+    }
+
+
+    if (respuesta === "S") {
+
+
+        const [existe] = await db.execute(
+            `SELECT id
+               FROM asignaciones
+              WHERE cedula = ?
+              LIMIT 1`,
+            [cedula]
+        );
+
+
+        if (existe.length > 0) {
+
+
+            await db.execute(
+            `UPDATE asignaciones
+                SET voto='S',
+                    voto_fecha=CURRENT_TIMESTAMP,
+                    voto_operador=?
+              WHERE cedula=?`,
+            [
+                telefono,
+                cedula
+            ]);
+
+
+        } else {
+
+
+            await db.execute(
+            `INSERT INTO asignaciones
+            (
+                operador_telefono,
+                cedula,
+                nombre,
+                apellido,
+                local,
+                mesa,
+                orden,
+                voto,
+                voto_fecha,
+                voto_operador
+            )
+            VALUES (?,?,?,?,?,?,?,'S',CURRENT_TIMESTAMP,?)`,
+            [
+                telefono,
+                cedula,
+                datos.nombre,
+                datos.apellido,
+                datos.local,
+                datos.mesa,
+                datos.orden,
+                telefono
+            ]);
+
+        }
+
+
+        await sock.sendMessage(from,{
+            text:
+`✅ Voto registrado correctamente.
+
+🆔 C.I.: ${cedula}
+
+🕒 ${new Date().toLocaleString("es-PY")}`
+        });
+
+
+    } else {
+
+
+        await sock.sendMessage(from,{
+            text:
+`❌ Voto no registrado.
+
+🆔 C.I.: ${cedula}`
+        });
+
+    }
+
+
+    delete userState[from];
+
+    return;
+}
 
 // ================== GUARDAR ASIGNACIÓN ==================
 if (userState[from]?.action === "preguntar_guardar") {
@@ -771,6 +941,215 @@ if (userState[from]?.action === "actualizar_observacion") {
 
     return;
 }
+
+// ===================================================
+// MODO VOTACION
+// ===================================================
+
+if (modo === "VOTACION" && /^\d+$/.test(cleanText)) {
+
+    try {
+
+        const ciudadano = await consultarPadron(cleanText);
+
+
+        if (!ciudadano) {
+
+            await sock.sendMessage(from,{
+                text:
+                `❌ No se encontró la C.I. ${cleanText}`
+            });
+
+            return;
+        }
+
+
+        // ===================================================
+        // CONTROL SI YA VOTÓ
+        // ===================================================
+
+        const [votoRegistrado] = await db.execute(
+            `SELECT 
+                voto,
+                voto_fecha,
+                voto_operador
+             FROM asignaciones
+             WHERE cedula = ?
+             AND voto = 'S'
+             LIMIT 1`,
+            [
+                ciudadano.CEDULA
+            ]
+        );
+
+
+        if (votoRegistrado.length > 0) {
+
+
+            const registro = votoRegistrado[0];
+
+
+            await sock.sendMessage(from,{
+                text:
+`⚠️ *PERSONA YA REGISTRADA COMO VOTANTE*
+
+👤 ${ciudadano.NOMBRE} ${ciudadano.APELLIDO}
+
+🆔 C.I.
+${ciudadano.CEDULA}
+
+✅ Voto registrado
+
+🕒 Fecha:
+${new Date(registro.voto_fecha)
+.toLocaleString("es-PY")}
+
+👤 Operador:
+${registro.voto_operador}`
+            });
+
+
+            return;
+
+        }
+
+
+        userState[from] = {
+            action: "preguntar_voto",
+            cedula: ciudadano.CEDULA,
+            datos: {
+                nombre: ciudadano.NOMBRE,
+                apellido: ciudadano.APELLIDO,
+                local: ciudadano.local,
+                mesa: ciudadano.MESA || null,
+                orden: ciudadano.ORDEN || null
+            }
+        };
+
+
+        await sock.sendMessage(from,{
+            text:
+`🗳️ *CONTROL DE VOTACIÓN*
+
+👤 ${ciudadano.NOMBRE} ${ciudadano.APELLIDO}
+
+🆔 C.I.
+${ciudadano.CEDULA}
+
+🏫 Local:
+${ciudadano.local || "-"}
+
+━━━━━━━━━━━━━━
+
+¿La persona ya votó?
+
+*S* = Sí
+*N* = No`
+        });
+
+
+    } catch(err){
+
+        console.error(err);
+
+        await sock.sendMessage(from,{
+            text:"❌ Error consultando votación."
+        });
+
+    }
+
+    return;
+}
+
+// ===================================================
+// QUITAR VOTO (ADMIN)
+// ===================================================
+
+if (cleanLower.startsWith("quitarvoto ")) {
+
+
+    if (telefono !== ADMIN) {
+
+        await sock.sendMessage(from,{
+            text:"⛔ No autorizado."
+        });
+
+        return;
+    }
+
+
+    const partes = cleanText.split(" ");
+
+    const cedulaQuitar = partes[1];
+
+
+    if (!cedulaQuitar) {
+
+        await sock.sendMessage(from,{
+            text:
+`❌ Formato incorrecto.
+
+Usá:
+
+quitarvoto 2492085`
+        });
+
+        return;
+    }
+
+
+    const [registro] = await db.execute(
+        `SELECT 
+            nombre,
+            apellido,
+            voto
+         FROM asignaciones
+         WHERE cedula = ?
+         LIMIT 1`,
+        [
+            cedulaQuitar
+        ]
+    );
+
+
+    if (registro.length === 0) {
+
+        await sock.sendMessage(from,{
+            text:
+            `❌ No existe registro para la C.I. ${cedulaQuitar}`
+        });
+
+        return;
+    }
+
+
+    await db.execute(
+        `UPDATE asignaciones
+            SET voto='N',
+                voto_fecha=NULL,
+                voto_operador=NULL
+          WHERE cedula=?`,
+        [
+            cedulaQuitar
+        ]
+    );
+
+
+    await sock.sendMessage(from,{
+        text:
+`✅ Voto eliminado correctamente.
+
+🆔 C.I.:
+${cedulaQuitar}
+
+👤 ${registro[0].nombre} ${registro[0].apellido}`
+    });
+
+
+    return;
+}
+
+
 
 
   // ===================================================
