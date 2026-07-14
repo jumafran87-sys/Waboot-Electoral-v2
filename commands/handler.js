@@ -311,6 +311,50 @@ if (userState[from]?.action === "preguntar_voto") {
     if (respuesta === "S") {
 
 
+// =============================
+// GUARDAR HISTORIAL DE VOTO
+// =============================
+
+const [opData] = await db.execute(
+    `SELECT candidato_id
+     FROM operadores
+     WHERE telefono = ?
+     LIMIT 1`,
+    [
+        telefono
+    ]
+);
+
+
+let candidato_id = null;
+
+
+if (opData.length > 0) {
+
+    candidato_id = opData[0].candidato_id;
+
+}
+
+
+await db.execute(
+    `INSERT INTO historial_votos
+    (
+        cedula,
+        operador_telefono,
+        candidato_id,
+        estado
+    )
+    VALUES (?,?,?,?)`,
+    [
+        cedula,
+        telefono,
+        candidato_id,
+        "S"
+    ]
+);
+
+//--------------------------GHDV
+
         const [existe] = await db.execute(
             `SELECT id
                FROM asignaciones
@@ -421,20 +465,52 @@ if (userState[from]?.action === "preguntar_guardar") {
     }
 
     const { cedula, datos } = userState[from];
+	
+	
+	// ================== OBTENER CANDIDATO DEL OPERADOR ==================
+
+	const [operadorData] = await db.execute(
+    `SELECT 
+        o.candidato_id,
+        c.ciudad
+     FROM operadores o
+     LEFT JOIN candidatos c
+        ON c.id = o.candidato_id
+     WHERE o.telefono = ?
+     LIMIT 1`,
+    [telefono]
+	);
+
+
+	let candidato_id = null;
+	let ciudad = null;
+
+
+	if (operadorData.length > 0) {
+
+    candidato_id = operadorData[0].candidato_id;
+    ciudad = operadorData[0].ciudad;
+
+	}
+	
+	
+	
 
     await db.execute(
-        `INSERT INTO asignaciones
-        (
-            operador_telefono,
-            cedula,
-            nombre,
-            apellido,
-            local,
-            mesa,
-            orden,
-            celular
-        )
-        VALUES (?,?,?,?,?,?,?,?)
+    `INSERT INTO asignaciones
+    (
+        operador_telefono,
+        cedula,
+        nombre,
+        apellido,
+        local,
+        mesa,
+        orden,
+        celular,
+        ciudad,
+        candidato_id
+    )
+    VALUES (?,?,?,?,?,?,?,?,?,?)
         ON DUPLICATE KEY UPDATE
             nombre=VALUES(nombre),
             apellido=VALUES(apellido),
@@ -444,15 +520,17 @@ if (userState[from]?.action === "preguntar_guardar") {
             celular=VALUES(celular),
             fechahora=CURRENT_TIMESTAMP`,
         [
-            telefono,
-            cedula,
-            datos.nombre,
-            datos.apellido,
-            datos.local,
-            datos.mesa,
-            datos.orden,
-            datos.celular
-        ]
+		telefono,
+		cedula,
+		datos.nombre,
+		datos.apellido,
+		datos.local,
+		datos.mesa,
+		datos.orden,
+		datos.celular,
+		ciudad,
+		candidato_id
+		]
     );
 
     userState[from]={
