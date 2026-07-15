@@ -331,23 +331,30 @@ if (userState[from]?.action === "preguntar_voto") {
 // =============================
 
 const [opData] = await db.execute(
-    `SELECT candidato_id
-     FROM operadores
-     WHERE telefono = ?
-     LIMIT 1`,
-    [
-        telefono
-    ]
+`
+SELECT 
+    o.candidato_id,
+    c.ciudad
+FROM operadores o
+LEFT JOIN candidatos c
+ON c.id = o.candidato_id
+WHERE o.telefono = ?
+LIMIT 1
+`,
+[
+    telefono
+]
 );
 
 
 let candidato_id = null;
+let ciudad = null;
 
 
-if (opData.length > 0) {
+if(opData.length > 0){
 
     candidato_id = opData[0].candidato_id;
-
+    ciudad = opData[0].ciudad;
 }
 
 
@@ -357,14 +364,16 @@ await db.execute(
         cedula,
         operador_telefono,
         candidato_id,
-        estado
+        estado,
+        ciudad
     )
-    VALUES (?,?,?,?)`,
+    VALUES (?,?,?,?,?)`,
     [
         cedula,
         telefono,
         candidato_id,
-        "S"
+        "S",
+        ciudad
     ]
 );
 
@@ -383,43 +392,52 @@ await db.execute(
 
 
 	await db.execute(
-		`UPDATE asignaciones
-        SET voto='S',
-            voto_fecha=CURRENT_TIMESTAMP,
-            voto_operador=?
-		WHERE cedula=?`,
-		[
+    `UPDATE asignaciones
+    SET 
+        voto='S',
+        voto_fecha=CURRENT_TIMESTAMP,
+        voto_operador=?,
+        candidato_id=?,
+        ciudad=?
+    WHERE cedula=?`,
+    [
         telefono,
+        candidato_id,
+        ciudad,
         cedula
-		]);
+    ]);
 
 	} else {
 
             await db.execute(
             `INSERT INTO asignaciones
-            (
-                operador_telefono,
-                cedula,
-                nombre,
-                apellido,
-                local,
-                mesa,
-                orden,
-                voto,
-                voto_fecha,
-                voto_operador
-            )
-            VALUES (?,?,?,?,?,?,?,'S',CURRENT_TIMESTAMP,?)`,
+			(
+			operador_telefono,
+			cedula,
+			nombre,
+			apellido,
+			local,
+			mesa,
+			orden,
+			voto,
+			voto_fecha,
+			voto_operador,
+			candidato_id,
+			ciudad
+			)
+			VALUES (?,?,?,?,?,?,?,'S',CURRENT_TIMESTAMP,?,?,?)`,
             [
-                telefono,
-                cedula,
-                datos.nombre,
-                datos.apellido,
-                datos.local,
-                datos.mesa,
-                datos.orden,
-                telefono
-            ]);
+				telefono,
+				cedula,
+				datos.nombre,
+				datos.apellido,
+				datos.local,
+				datos.mesa,
+				datos.orden,
+				telefono,
+				candidato_id,
+				ciudad
+			]);
 
         }
 
