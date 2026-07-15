@@ -66,3 +66,87 @@ export async function guardarAsignacion(
     );
 
 }
+
+
+// ======================================
+// ACTUALIZAR CELULAR
+// ======================================
+
+export async function actualizarCelular(
+    operador,
+    cedula,
+    celular
+) {
+
+    const [resultado] = await db.execute(
+        `UPDATE asignaciones
+            SET celunew = ?,
+                fechahora = CURRENT_TIMESTAMP
+          WHERE operador_telefono = ?
+            AND cedula = ?`,
+        [
+            celular,
+            operador,
+            cedula
+        ]
+    );
+
+    return resultado;
+
+}
+
+
+// ======================================
+// ACTUALIZAR UBICACIÓN
+// ======================================
+
+export async function actualizarUbicacion(
+    operador,
+    cedula,
+    ubicacion
+) {
+
+    const [resultado] = await db.execute(
+        `UPDATE asignaciones
+            SET ubi = ?,
+                fechahora = CURRENT_TIMESTAMP
+          WHERE operador_telefono = ?
+            AND cedula = ?`,
+        [
+            ubicacion,
+            operador,
+            cedula
+        ]
+    );
+
+    return resultado;
+
+}
+
+
+// ======================================
+// ACTUALIZAR OBSERVACIÓN
+// ======================================
+
+export async function actualizarObservacion(
+    operador,
+    cedula,
+    observacion
+) {
+
+    const [resultado] = await db.execute(
+        `UPDATE asignaciones
+            SET observacion = ?,
+                fechahora = CURRENT_TIMESTAMP
+          WHERE operador_telefono = ?
+            AND cedula = ?`,
+        [
+            observacion,
+            operador,
+            cedula
+        ]
+    );
+
+    return resultado;
+
+}

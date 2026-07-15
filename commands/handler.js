@@ -18,8 +18,15 @@ import {
 } from "../services/operadorService.js";
 
 import {
-    guardarAsignacion
+    guardarAsignacion,
+    actualizarCelular,
+    actualizarUbicacion,
+    actualizarObservacion
 } from "../services/asignacionService.js";
+
+import {
+    guardarHistorial
+} from "../services/historialService.js";
 
 const ADMIN = "595985761431";
 
@@ -364,17 +371,11 @@ await db.execute(
         if (existe.length > 0) {
 
 
-            await db.execute(
-            `UPDATE asignaciones
-                SET voto='S',
-                    voto_fecha=CURRENT_TIMESTAMP,
-                    voto_operador=?
-              WHERE cedula=?`,
-            [
-                telefono,
-                cedula
-            ]);
-
+            await actualizarCelular(
+			telefono,
+			cedula,
+			nuevoCel
+			);
 
         } else {
 
@@ -493,27 +494,18 @@ if (userState[from]?.action === "preguntar_guardar") {
 	
 	
 
-   await guardarAsignacion({
+await guardarAsignacion({
 
     operador: telefono,
-
     cedula,
-
     nombre: datos.nombre,
-
     apellido: datos.apellido,
-
     local: datos.local,
-
     mesa: datos.mesa,
-
     orden: datos.orden,
-
     celular: datos.celular,
-
-    ciudad: null,
-
-    candidato_id: null
+    ciudad,
+    candidato_id
 
 });
 
@@ -662,7 +654,7 @@ if (userState[from]?.action === "menu_actualizar") {
     return;
 }
 
-// ================== MENU ACTUALIZAR ==================
+ // ================== MENU ACTUALIZAR ==================
 
 if (userState[from]?.action === "menu_actualizar") {
 
@@ -750,8 +742,8 @@ if (userState[from]?.action === "menu_actualizar") {
     });
 
     return;
-}
 
+}
 // ================== ACTUALIZAR CELULAR ==================
 
 if (userState[from]?.action === "actualizar_celular") {
@@ -769,18 +761,12 @@ if (userState[from]?.action === "actualizar_celular") {
         return;
     }
 
-    await db.execute(
-        `UPDATE asignaciones
-            SET celunew = ?,
-                fechahora = CURRENT_TIMESTAMP
-          WHERE operador_telefono = ?
-            AND cedula = ?`,
-        [
-            nuevoCel,
-            telefono,
-            cedula
-        ]
-    );
+    
+    await actualizarCelular(
+    telefono,
+    cedula,
+    nuevoCel
+	);
 
     userState[from] = {
         action:"preguntar_actualizar",
@@ -903,18 +889,11 @@ if (locationMsg) {
     console.log("📍 Operador:", telefono);
 
 
-    await db.execute(
-        `UPDATE asignaciones
-            SET ubi = ?,
-                fechahora = CURRENT_TIMESTAMP
-          WHERE operador_telefono = ?
-            AND cedula = ?`,
-        [
-            ubicacion,
-            telefono,
-            cedula
-        ]
-    );
+    await actualizarUbicacion(
+    telefono,
+    cedula,
+    ubicacion
+	);
 
 
     userState[from] = {
@@ -962,24 +941,17 @@ if (userState[from]?.action === "actualizar_observacion") {
     console.log("🆔 Cedula:", cedula);
 
 
-    const [resultado] = await db.execute(
-        `UPDATE asignaciones
-            SET observacion = ?,
-                fechahora = CURRENT_TIMESTAMP
-          WHERE operador_telefono = ?
-            AND cedula = ?`,
-        [
-            observacion,
-            telefono,
-            cedula
-        ]
-    );
+    const resultado = await actualizarObservacion(
+    telefono,
+    cedula,
+    observacion
+	);
 
 
-    console.log(
-        "Filas actualizadas:",
-        resultado.affectedRows
-    );
+	console.log(
+    "Filas actualizadas:",
+    resultado.affectedRows
+	);
 
 
     userState[from] = {
