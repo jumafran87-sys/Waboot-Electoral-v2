@@ -28,6 +28,17 @@ import {
     guardarHistorial
 } from "../services/historialService.js";
 
+
+import {
+    manejarActualizaciones
+} from "./actualizarHandler.js";
+
+
+import {
+    manejarVotacion
+} from "./votacionHandler.js";
+
+
 const ADMIN = "595985761431";
 
 export async function handleCommand(
@@ -371,14 +382,18 @@ await db.execute(
         if (existe.length > 0) {
 
 
-            await actualizarCelular(
-			telefono,
-			cedula,
-			nuevoCel
-			);
+	await db.execute(
+		`UPDATE asignaciones
+        SET voto='S',
+            voto_fecha=CURRENT_TIMESTAMP,
+            voto_operador=?
+		WHERE cedula=?`,
+		[
+        telefono,
+        cedula
+		]);
 
-        } else {
-
+	} else {
 
             await db.execute(
             `INSERT INTO asignaciones
@@ -527,573 +542,26 @@ await guardarAsignacion({
     return;
 }
 
-// ================== PREGUNTAR ACTUALIZAR ==================
 
-if (userState[from]?.action === "preguntar_actualizar") {
-
-    const respuesta = cleanText.toUpperCase();
-
-    if (respuesta === "S") {
-
-        userState[from].action = "menu_actualizar";
-
-        await sock.sendMessage(from,{
-            text:
-`🛠 ACTUALIZAR DATOS
-
-A) 📲 Celular
-B) 📍 Ubicación
-C) 📝 Observación
-D) ❌ Salir
-
-Respondé A, B, C o D`
-        });
-
-        return;
-    }
-
-
-    if (respuesta === "N") {
-
-        delete userState[from];
-
-        await sock.sendMessage(from,{
-            text:
-            "✅ Listo.\n\nPuede consultar otra cédula."
-        });
-
-        return;
-    }
-
-
-    await sock.sendMessage(from,{
-        text:
-        "✍️ Respondé S para actualizar o N para salir."
-    });
-
-    return;
-}
-
-// ================== MENU ACTUALIZAR ==================
-
-if (userState[from]?.action === "menu_actualizar") {
-
-    const respuesta = cleanText.toUpperCase();
-
-    const cedula = userState[from].cedula;
-
-
-    if (respuesta === "A") {
-
-        userState[from]={
-            action:"actualizar_celular",
-            cedula
-        };
-
-
-        await sock.sendMessage(from,{
-            text:
-            "📲 Enviá el nuevo número de celular."
-        });
-
-        return;
-    }
-
-
-    if (respuesta === "B") {
-
-        userState[from]={
-            action:"actualizar_ubicacion",
-            cedula
-        };
-
-
-        await sock.sendMessage(from,{
-            text:
-            "📍 Enviá ubicación GPS o link Google Maps."
-        });
-
-        return;
-    }
-
-
-    if (respuesta === "C") {
-
-    userState[from] = {
-        action:"actualizar_observacion",
-        cedula
-    };
-
-    await sock.sendMessage(from,{
-        text:
-        "📝 Enviá la observación que deseas guardar."
-    });
-
-    return;
-}
-
-
-    if (respuesta === "D") {
-
-        delete userState[from];
-
-        await sock.sendMessage(from,{
-            text:
-            "✅ Saliste del menú.\nPuede consultar otra cédula."
-        });
-
-        return;
-    }
-
-
-    await sock.sendMessage(from,{
-        text:
-        "✍️ Opción inválida. Elegí A, B, C o D."
-    });
-
-    return;
-}
-
- // ================== MENU ACTUALIZAR ==================
-
-if (userState[from]?.action === "menu_actualizar") {
-
-    const respuesta = cleanText.toUpperCase();
-
-    const cedula = userState[from].cedula;
-
-
-    // ================== ACTUALIZAR CELULAR ==================
-
-    if (respuesta === "A") {
-
-        userState[from] = {
-            action: "actualizar_celular",
-            cedula
-        };
-
-
-        await sock.sendMessage(from, {
-            text:
-            "📲 Enviá el nuevo número de celular."
-        });
-
-        return;
-    }
-
-
-    // ================== ACTUALIZAR UBICACIÓN ==================
-
-    if (respuesta === "B") {
-
-        userState[from] = {
-            action: "actualizar_ubicacion",
-            cedula
-        };
-
-
-        await sock.sendMessage(from, {
-            text:
-            "📍 Enviá ubicación GPS o link de Google Maps."
-        });
-
-        return;
-    }
-
-
-    // ================== ACTUALIZAR OBSERVACIÓN ==================
-
-    if (respuesta === "C") {
-
-        userState[from] = {
-            action: "actualizar_observacion",
-            cedula
-        };
-
-
-        await sock.sendMessage(from, {
-            text:
-            "📝 Enviá la observación que deseas guardar."
-        });
-
-        return;
-    }
-
-
-    // ================== SALIR ==================
-
-    if (respuesta === "D") {
-
-        delete userState[from];
-
-
-        await sock.sendMessage(from, {
-            text:
-            "✅ Saliste del menú.\n\nPodés consultar otra cédula."
-        });
-
-        return;
-    }
-
-
-    await sock.sendMessage(from, {
-        text:
-        "✍️ Opción inválida.\n\nRespondé A, B, C o D."
-    });
-
-    return;
-
-}
-// ================== ACTUALIZAR CELULAR ==================
-
-if (userState[from]?.action === "actualizar_celular") {
-
-    const cedula = userState[from].cedula;
-
-    const nuevoCel = cleanText.replace(/\D/g, "");
-
-    if (!/^\d{8,13}$/.test(nuevoCel)) {
-
-        await sock.sendMessage(from,{
-            text:"❌ Número inválido."
-        });
-
-        return;
-    }
-
-    
-    await actualizarCelular(
+//parte donde actualiza del modulo 
+const atendido = await manejarActualizaciones(
+    sock,
+    msg,
+    from,
+    cleanText,
     telefono,
-    cedula,
-    nuevoCel
-	);
+    userState
+);
 
-    userState[from] = {
-        action:"preguntar_actualizar",
-        cedula
-    };
-
-    await sock.sendMessage(from,{
-        text:
-`✅ Celular actualizado:
-
-${nuevoCel}
-
-¿Desea actualizar algo más?
-
-S = Sí
-N = No`
-    });
-
+if (atendido) {
     return;
 }
 
-// ================== ACTUALIZAR UBICACIÓN ==================
 
-if (userState[from]?.action === "actualizar_ubicacion") {
-	
-	
-	console.log(
-	"MENSAJE COMPLETO UBICACION:",
-	JSON.stringify(msg.message, null, 2)
-	);
-	
 
-    const cedula = userState[from].cedula;
 
-    let ubicacion = null;
 
-    // ================== UBICACIÓN GPS WHATSAPP ==================
 
-    let locationMsg = null;
-
-
-// ubicación normal
-if (msg.message?.locationMessage) {
-
-    locationMsg = msg.message.locationMessage;
-
-}
-
-
-// ubicación dentro de mensaje efímero
-else if (
-    msg.message?.ephemeralMessage?.message?.locationMessage
-) {
-
-    locationMsg =
-        msg.message.ephemeralMessage.message.locationMessage;
-
-}
-
-
-// ubicación dentro de viewOnce
-else if (
-    msg.message?.viewOnceMessage?.message?.locationMessage
-) {
-
-    locationMsg =
-        msg.message.viewOnceMessage.message.locationMessage;
-
-}
-
-
-if (locationMsg) {
-
-    ubicacion =
-        `${locationMsg.degreesLatitude},${locationMsg.degreesLongitude}`;
-
-} 
-    
-    // ================== GOOGLE MAPS ==================
-
-    else {
-
-        const texto = decodeURIComponent(cleanText);
-
-        console.log("📍 Texto ubicación recibido:", texto);
-
-
-        const urlMatch =
-            texto.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-            texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-
-
-        if (urlMatch) {
-
-            ubicacion =
-                `${urlMatch[1]},${urlMatch[2]}`;
-
-        } 
-        
-        else {
-
-            ubicacion = cleanText.trim();
-
-        }
-    }
-
-
-    if (!ubicacion || ubicacion.length < 3) {
-
-        await sock.sendMessage(from,{
-            text:"❌ No se pudo detectar la ubicación."
-        });
-
-        return;
-    }
-
-
-    console.log("📍 Guardando ubicación:", ubicacion);
-    console.log("📍 Cedula:", cedula);
-    console.log("📍 Operador:", telefono);
-
-
-    await actualizarUbicacion(
-    telefono,
-    cedula,
-    ubicacion
-	);
-
-
-    userState[from] = {
-        action:"preguntar_actualizar",
-        cedula
-    };
-
-
-    await sock.sendMessage(from,{
-        text:
-`✅ Ubicación registrada.
-
-📍 https://maps.google.com/?q=${ubicacion}
-
-¿Desea actualizar algo más?
-
-*S* = Sí
-*N* = No`
-    });
-
-
-    return;
-}
-
-// ================== ACTUALIZAR OBSERVACIÓN ==================
-
-if (userState[from]?.action === "actualizar_observacion") {
-
-    const cedula = userState[from].cedula;
-
-    const observacion = cleanText.trim();
-
-
-    if (!observacion) {
-
-        await sock.sendMessage(from,{
-            text:"❌ Observación vacía."
-        });
-
-        return;
-    }
-
-
-    console.log("📝 Guardando observación:", observacion);
-    console.log("🆔 Cedula:", cedula);
-
-
-    const resultado = await actualizarObservacion(
-    telefono,
-    cedula,
-    observacion
-	);
-
-
-	console.log(
-    "Filas actualizadas:",
-    resultado.affectedRows
-	);
-
-
-    userState[from] = {
-        action:"preguntar_actualizar",
-        cedula
-    };
-
-
-    await sock.sendMessage(from,{
-        text:
-`📝 Observación guardada correctamente.
-
-"${observacion}"
-
-¿Desea actualizar algo más?
-
-*S* = Sí
-*N* = No`
-    });
-
-
-    return;
-}
-
-// ===================================================
-// MODO VOTACION
-// ===================================================
-
-if (modo === "VOTACION" && /^\d+$/.test(cleanText)) {
-
-    try {
-
-        const ciudadano = await consultarPadron(cleanText);
-
-
-        if (!ciudadano) {
-
-            await sock.sendMessage(from,{
-                text:
-                `❌ No se encontró la C.I. ${cleanText}`
-            });
-
-            return;
-        }
-
-
-        // ===================================================
-        // CONTROL SI YA VOTÓ
-        // ===================================================
-
-        const [votoRegistrado] = await db.execute(
-            `SELECT 
-                voto,
-                voto_fecha,
-                voto_operador
-             FROM asignaciones
-             WHERE cedula = ?
-             AND voto = 'S'
-             LIMIT 1`,
-            [
-                ciudadano.CEDULA
-            ]
-        );
-
-
-        if (votoRegistrado.length > 0) {
-
-
-            const registro = votoRegistrado[0];
-
-
-            await sock.sendMessage(from,{
-                text:
-`⚠️ *PERSONA YA REGISTRADA COMO VOTANTE*
-
-👤 ${ciudadano.NOMBRE} ${ciudadano.APELLIDO}
-
-🆔 C.I.
-${ciudadano.CEDULA}
-
-✅ Voto registrado
-
-🕒 Fecha:
-${new Date(registro.voto_fecha)
-.toLocaleString("es-PY")}
-
-👤 Operador:
-${registro.voto_operador}`
-            });
-
-
-            return;
-
-        }
-
-
-        userState[from] = {
-            action: "preguntar_voto",
-            cedula: ciudadano.CEDULA,
-            datos: {
-                nombre: ciudadano.NOMBRE,
-                apellido: ciudadano.APELLIDO,
-                local: ciudadano.local,
-                mesa: ciudadano.MESA || null,
-                orden: ciudadano.ORDEN || null
-            }
-        };
-
-
-        await sock.sendMessage(from,{
-            text:
-`🗳️ *CONTROL DE VOTACIÓN*
-
-👤 ${ciudadano.NOMBRE} ${ciudadano.APELLIDO}
-
-🆔 C.I.
-${ciudadano.CEDULA}
-
-🏫 Local:
-${ciudadano.local || "-"}
-
-━━━━━━━━━━━━━━
-
-¿La persona ya votó?
-
-*S* = Sí
-*N* = No`
-        });
-
-
-    } catch(err){
-
-        console.error(err);
-
-        await sock.sendMessage(from,{
-            text:"❌ Error consultando votación."
-        });
-
-    }
-
-    return;
-}
 
 // ===================================================
 // QUITAR VOTO (ADMIN)
@@ -1184,6 +652,21 @@ ${cedulaQuitar}
 }
 
 
+//modo llamada modo votacion
+const votacion =
+await manejarVotacion(
+    sock,
+    from,
+    cleanText,
+    telefono,
+    userState,
+    modo
+);
+
+
+if (votacion) {
+    return;
+}
 
 
   // ===================================================
