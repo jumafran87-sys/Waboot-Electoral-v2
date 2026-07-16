@@ -1,6 +1,7 @@
 import {
     obtenerReporteGeneral,
-    obtenerReporteCandidato
+    obtenerReporteCandidato,
+    buscarCandidato
 } from "../services/reporteService.js";
 
 
@@ -11,21 +12,26 @@ export async function manejarReportes(
     usuario
 ){
 
-    if(cleanLower !== "reporte"){
-        return false;
-    }
+  if(!cleanLower.startsWith("reporte")){
+    return false;
+}
 
 
     let datos;
 
 
+datos = await obtenerReporteGeneral();
+
+const partes = cleanLower.split(" ");
+
+const busqueda = partes.slice(1).join(" ").trim();
     // ======================
     // ADMIN
     // ======================
 
     if(usuario.rol === "ADMIN"){
 
-        datos = await obtenerReporteGeneral();
+    
 
 
         await sock.sendMessage(from,{

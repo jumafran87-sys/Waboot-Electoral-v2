@@ -1,8 +1,10 @@
 import {
     obtenerReporteGeneral,
     obtenerReporteCandidato,
-    obtenerReporteOperador
+    obtenerReporteOperador,
+	buscarCandidato
 } from "../services/reporteService.js";
+
 
 
 export async function manejarReportes(
@@ -13,21 +15,44 @@ export async function manejarReportes(
     telefono
 ){
 
-    if(cleanLower !== "reporte"){
-        return false;
+   // if(cleanLower !== "reporte"){
+    //    return false;
+ //   }
+
+if(!cleanLower.startsWith("reporte")){
+    return false;
+}
+
+
+const partes = cleanLower.split(" ");
+
+const busqueda = partes.slice(1).join(" ").trim();
+
+
+ function calcularPorcentaje(total, votos){
+
+    if(total === 0){
+        return "0.00";
     }
 
+    return ((votos * 100) / total).toFixed(2);
 
+}
 
-    // =========================
+    // =========================_______________________________________________________
     // ADMIN
     // =========================
 
-    if(usuario.rol === "ADMIN"){
+  if(usuario.rol === "ADMIN"){
+
+    // ======================
+    // REPORTE GENERAL
+    // ======================
+
+    if(busqueda === ""){
 
         const datos =
             await obtenerReporteGeneral();
-
 
         await sock.sendMessage(from,{
             text:
@@ -49,11 +74,104 @@ ${datos.ubicaciones || 0}
 ${datos.observaciones || 0}`
         });
 
+        return true;
+
+    }
+
+
+    // ======================
+    // BUSCAR CANDIDATO
+    // ======================
+
+    const candidatos =
+        await buscarCandidato(busqueda);
+
+
+    if(candidatos.length === 0){
+
+        await sock.sendMessage(from,{
+            text:"❌ No encontré ningún candidato."
+        });
 
         return true;
 
     }
 
+
+    if(candidatos.length > 1){
+
+        let texto =
+`👥 Encontré varios candidatos:
+
+`;
+
+        candidatos.forEach(c=>{
+
+            texto +=
+`• ${c.nombre} ${c.apellido}
+${c.cargo}
+${c.ciudad}
+
+`;
+
+        });
+
+        await sock.sendMessage(from,{
+            text:texto
+        });
+
+        return true;
+
+    }
+
+const candidato = candidatos[0];
+
+
+const datos =
+    await obtenerReporteCandidato(
+        candidato.id
+    );
+
+
+const porcentaje =
+    calcularPorcentaje(
+        datos.total,
+        datos.votos
+    );
+
+
+
+    await sock.sendMessage(from,{
+        text:
+`📊 ${candidato.nombre} ${candidato.apellido}
+
+🏙 ${candidato.ciudad}
+
+━━━━━━━━━━━━━━
+
+👥 Personas:
+${datos.total || 0}
+
+🗳 Votos:
+${datos.votos || 0}
+
+📲 Celulares:
+${datos.celulares || 0}
+
+📍 Ubicaciones:
+${datos.ubicaciones || 0}
+
+📝 Observaciones:
+${datos.observaciones || 0}
+
+📈 Avance:
+${porcentaje}%`
+    });
+
+    return true;
+
+}
+//__________________________________________________________________________________________________________
 
 
     // =========================
@@ -67,6 +185,11 @@ ${datos.observaciones || 0}`
             await obtenerReporteCandidato(
                 usuario.candidato_id
             );
+
+	const porcentaje =
+    datos.total > 0
+        ? ((datos.votos * 100) / datos.total).toFixed(2)
+        : "0.00";
 
 
         await sock.sendMessage(from,{
@@ -87,7 +210,11 @@ ${datos.votos || 0}
 ${datos.celulares || 0}
 
 📍 Ubicaciones:
-${datos.ubicaciones || 0}`
+${datos.ubicaciones || 0}
+
+📈 Avance:
+${porcentaje}%`
+
         });
 
 
