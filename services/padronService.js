@@ -57,17 +57,20 @@ export async function consultarPadron(cedula) {
 
     SELECT 
 
-      r.CEDULA,
-      r.NOMBRE,
-      r.APELLIDO,
-      r.FEC_NAC,
-      r.SEXO,
+r.CEDULA,
+r.NOMBRE,
+r.APELLIDO,
+r.FEC_NAC,
+r.SEXO,
 
-      d.DESCRIP AS departamento,
+r.DEPART,
+r.DISTRITO,
 
-      di.DESCRIP AS distrito,
+d.DESCRIP AS departamento,
 
-      l.DESCRIP AS local
+di.DESCRIP AS distrito,
+
+l.DESCRIP AS local
 
 
     FROM ${nombreTablaPadron} r

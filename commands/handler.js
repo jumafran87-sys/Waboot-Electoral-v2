@@ -52,6 +52,13 @@ import {
 } from "../services/permisoService.js";
 
 
+import {
+    validarZonaCandidato
+} from "../services/validacionService.js";
+
+import {
+    guardarRechazo
+} from "../services/rechazoService.js";
 
 
 
@@ -549,7 +556,37 @@ if (userState[from]?.action === "preguntar_guardar") {
 
     const { cedula, datos } = userState[from];
 	
-	
+	const validacion =
+	await validarZonaCandidato(
+    telefono,
+    {
+        cedula,
+        distrito: datos.distrito
+    }
+	);
+
+
+	if(!validacion.valido){
+
+
+	await sock.sendMessage(from,{
+	text:
+	`⚠️ No se puede registrar.
+
+	Esta persona pertenece a otro distrito.
+
+	👤 Candidato:
+	${validacion.candidato.nombre}
+	${validacion.candidato.apellido}
+
+	🏙 Ciudad registrada:
+	${validacion.candidato.ciudad}`
+	});
+
+
+	return;
+
+	}
 	// ================== OBTENER CANDIDATO DEL OPERADOR ==================
 
 	const [operadorData] = await db.execute(
@@ -800,7 +837,7 @@ Responda *S* o *N*.`;
 
 
 
-	userState[from] = {
+userState[from] = {
     action: "preguntar_guardar",
     cedula: ciudadano.CEDULA,
     datos: {
@@ -809,7 +846,10 @@ Responda *S* o *N*.`;
         local: ciudadano.local,
         mesa: ciudadano.MESA || null,
         orden: ciudadano.ORDEN || null,
-        celular: ciudadano.CELULAR || null
+        celular: ciudadano.CELULAR || null,
+
+        departamento: ciudadano.DEPART,
+        distrito: ciudadano.DISTRITO
     }
 };
 
