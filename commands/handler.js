@@ -39,6 +39,22 @@ import {
 } from "./votacionHandler.js";
 
 
+import {
+    guardarHistorialVoto
+} from "../services/historialVotosService.js";
+
+import {
+    manejarReportes
+} from "./reportesHandler.js";
+
+import {
+    obtenerRol
+} from "../services/permisoService.js";
+
+
+
+
+
 const ADMIN = "595985761431";
 
 export async function handleCommand(
@@ -47,7 +63,8 @@ export async function handleCommand(
   from,
   text,
   telefono,
-  userState
+  userState,
+  botTelefono
 ) {
 
 const cleanText = text.trim();
@@ -70,6 +87,44 @@ console.log("🟢 MODO BOT:", modo);
     });
     return;
 	}
+	
+	const usuario = await obtenerRol(telefono);
+
+	console.log(
+	"👤 USUARIO:",
+	usuario
+	);
+	
+
+
+
+
+
+//modulo de manejar reportesHandler
+const reporte =
+await manejarReportes(
+    sock,
+    from,
+    cleanLower,
+    usuario,
+    telefono
+);
+
+
+if(reporte){
+    return;
+}
+
+//const reporte = await manejarReportes(
+  //  sock,
+    //from,
+    //cleanLower,
+    //telefono
+//);
+
+//if(reporte){
+  //  return;
+//}
 
   // ===================================================
   // RESTART
@@ -357,25 +412,22 @@ if(opData.length > 0){
     ciudad = opData[0].ciudad;
 }
 
+//guardamos el historial de votosservice
+await guardarHistorialVoto({
 
-await db.execute(
-    `INSERT INTO historial_votos
-    (
-        cedula,
-        operador_telefono,
-        candidato_id,
-        estado,
-        ciudad
-    )
-    VALUES (?,?,?,?,?)`,
-    [
-        cedula,
-        telefono,
-        candidato_id,
-        "S",
-        ciudad
-    ]
-);
+    cedula,
+
+    operador: telefono,
+
+    candidato_id,
+
+    estado:"S",
+
+    botTelefono,
+
+    ciudad
+
+});
 
 //--------------------------GHDV
 
@@ -574,12 +626,6 @@ const atendido = await manejarActualizaciones(
 if (atendido) {
     return;
 }
-
-
-
-
-
-
 
 // ===================================================
 // QUITAR VOTO (ADMIN)

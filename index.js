@@ -12,6 +12,8 @@ const processedMessages = new Set();
 let sock;
 let isReconnecting = false;
 
+
+
 async function startBot() {
   if (isReconnecting) return;
   isReconnecting = true;
@@ -140,7 +142,17 @@ if (!text.trim() && !tieneUbicacion) return;
         );
 
         // ENVIAR AL ENRUTADOR DE COMANDOS MODULAR
-        await handleCommand(sock, msg, from, text, telefono, userState);
+        await handleCommand(
+		sock,
+		msg,
+		from,
+		text,
+		telefono,
+		userState,
+		myNumber
+		);
+
+
 
       } catch (err) {
         console.error("❌ Error en evento de mensaje:", err);
