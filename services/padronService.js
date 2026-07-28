@@ -7,33 +7,44 @@ import { db } from "../database/mysql.js";
 
 async function obtenerTablaPadron() {
 
-  let nombreTablaPadron = "regciv";
-
-  try {
-
-    const [config] = await db.execute(
-      "SELECT tabla_padron FROM config_eleccion WHERE estado = 1 LIMIT 1"
-    );
+    let nombreTablaPadron = "regciv";
 
 
-    if (config.length > 0) {
+    try {
 
-      nombreTablaPadron = config[0].tabla_padron;
+
+        const [config] = await db.execute(
+            `
+            SELECT tabla_padron
+            FROM config_eleccion
+            WHERE estado = 1
+            LIMIT 1
+            `
+        );
+
+
+        if(config.length > 0){
+
+            nombreTablaPadron =
+                config[0].tabla_padron;
+
+        }
+
+
+    } catch(err){
+
+
+        console.log(
+            "⚠️ Sin tabla config_eleccion, usando:",
+            nombreTablaPadron
+        );
+
 
     }
 
 
-  } catch (err) {
+    return nombreTablaPadron;
 
-    console.log(
-      "⚠️ Sin tabla config_eleccion, usando:",
-      nombreTablaPadron
-    );
-
-  }
-
-
-  return nombreTablaPadron;
 }
 
 
@@ -43,219 +54,250 @@ async function obtenerTablaPadron() {
 // CONSULTA POR CÉDULA
 // =====================================================
 
-export async function consultarPadron(cedula) {
-
-  try {
+export async function consultarPadron(cedula){
 
 
-    const nombreTablaPadron =
-      await obtenerTablaPadron();
+    try{
 
 
-
-    const query = `
-
-    SELECT 
-
-r.CEDULA,
-r.NOMBRE,
-r.APELLIDO,
-r.FEC_NAC,
-r.SEXO,
-
-r.DEPART,
-r.DISTRITO,
-
-d.DESCRIP AS departamento,
-
-di.DESCRIP AS distrito,
-
-l.DESCRIP AS local
-
-
-    FROM ${nombreTablaPadron} r
-
-
-    LEFT JOIN dep d 
-      ON d.DEPART = r.DEPART
-
-
-    LEFT JOIN dis di 
-      ON di.DEPART = r.DEPART
-     AND di.DISTRITO = r.DISTRITO
-
-
-    LEFT JOIN loc l 
-      ON l.DPTO = r.DEPART
-     AND l.DISTRITO = r.DISTRITO
-     AND l.ZONA = r.ZONA
-     AND l.LOCAL = r.LOCAL
-
-
-    WHERE r.CEDULA = ?
-
-    LIMIT 1;
-
-    `;
+        const nombreTablaPadron =
+            await obtenerTablaPadron();
 
 
 
-    const [rows] =
-      await db.execute(query,[cedula]);
+        const query = `
+
+        SELECT
+
+        r.CEDULA,
+        r.NOMBRE,
+        r.APELLIDO,
+        r.FEC_NAC,
+        r.SEXO,
+
+        r.DEPART,
+        r.DISTRITO,
+        r.ZONA,
+
+        d.DESCRIP AS departamento,
+
+        di.DESCRIP AS distrito,
+
+        l.DESCRIP AS local
+
+
+        FROM ${nombreTablaPadron} r
+
+
+        LEFT JOIN dep d
+        ON d.DEPART = r.DEPART
+
+
+        LEFT JOIN dis di
+        ON di.DEPART = r.DEPART
+        AND di.DISTRITO = r.DISTRITO
+
+
+        LEFT JOIN loc l
+        ON l.DPTO = r.DEPART
+        AND l.DISTRITO = r.DISTRITO
+        AND l.ZONA = r.ZONA
+        AND l.LOCAL = r.LOCAL
+
+
+        WHERE r.CEDULA = ?
+
+
+        LIMIT 1
+
+        `;
 
 
 
-    return rows.length > 0
-      ? rows[0]
-      : null;
+        const [rows] =
+            await db.execute(
+                query,
+                [cedula]
+            );
 
 
 
-  } catch(error) {
+        return rows.length > 0
+            ? rows[0]
+            : null;
 
 
-    console.error(
-      "❌ Error al consultar padrón:",
-      error
-    );
+
+    }catch(error){
 
 
-    throw error;
+        console.error(
+            "❌ Error consultar padrón:",
+            error
+        );
 
-  }
+
+        throw error;
+
+    }
+
 
 }
 
 
 
 
+
 // =====================================================
-// BUSCAR POR NOMBRE / APELLIDO
+// BUSQUEDA OPTIMIZADA POR NOMBRE
 // =====================================================
 
-export async function buscarPorNombre(nombreCompleto) {
+export async function buscarPorNombre(
+    nombreCompleto,
+    departamento = null,
+    distrito = null
+){
+
+    try{
+
+        const tabla = await obtenerTablaPadron();
 
 
-  try {
-
-
-    const nombreTablaPadron =
-      await obtenerTablaPadron();
-
-
-
-    const palabras =
-      nombreCompleto
-        .trim()
-        .split(/\s+/);
-
-
-
-    let query = `
-
-    SELECT
-
-      CEDULA,
-      NOMBRE,
-      APELLIDO,
-      DEPART,
-      DISTRITO
-
-
-    FROM ${nombreTablaPadron}
-
-
-    WHERE
-
-    `;
+        const palabras =
+            nombreCompleto
+            .trim()
+            .toUpperCase()
+            .split(/\s+/)
+            .filter(p => p.length > 1);
 
 
 
-    const params = [];
+        let query = `
+
+SELECT
+
+    r.CEDULA,
+    r.NOMBRE,
+    r.APELLIDO,
+
+    r.DEPART,
+    r.DISTRITO,
+    r.ZONA,
+
+    d.DESCRIP AS departamento,
+    di.DESCRIP AS distrito
+
+
+FROM ${tabla} r
+
+
+LEFT JOIN dep d
+ON d.DEPART = r.DEPART
+
+
+LEFT JOIN dis di
+ON di.DEPART = r.DEPART
+AND di.DISTRITO = r.DISTRITO
+
+
+WHERE 1=1
+
+`;
 
 
 
-    if (palabras.length >= 2) {
-
-
-      query += `
-
-      (
-        (NOMBRE LIKE ? AND APELLIDO LIKE ?)
-
-        OR
-
-        (NOMBRE LIKE ? AND APELLIDO LIKE ?)
-
-      )
-
-      `;
-
-
-      params.push(
-
-        `%${palabras[0]}%`,
-        `%${palabras[1]}%`,
-
-        `%${palabras[1]}%`,
-        `%${palabras[0]}%`
-
-      );
+        const params=[];
 
 
 
-    } else {
+        // FILTRO OPERADOR
+
+        if(departamento !== null){
+
+            query += `
+AND r.DEPART = ?
+`;
+
+            params.push(departamento);
+
+        }
 
 
-      query += `
+        if(distrito !== null){
 
-      (
-        NOMBRE LIKE ?
+            query += `
+AND r.DISTRITO = ?
+`;
 
-        OR
+            params.push(distrito);
 
-        APELLIDO LIKE ?
-
-      )
-
-      `;
+        }
 
 
-      params.push(
 
-        `%${palabras[0]}%`,
-        `%${palabras[0]}%`
+        // BUSCAR CADA PALABRA
 
-      );
+        for(const palabra of palabras){
+
+
+            query += `
+
+AND
+(
+    r.NOMBRE LIKE ?
+    OR
+    r.APELLIDO LIKE ?
+)
+
+`;
+
+            params.push(`%${palabra}%`);
+            params.push(`%${palabra}%`);
+
+        }
+
+
+
+        query += `
+
+ORDER BY
+r.APELLIDO,
+r.NOMBRE
+
+LIMIT 5
+
+`;
+
+
+
+        console.log("🔎 BUSQUEDA:");
+        console.log(query);
+        console.log(params);
+
+
+
+        const [rows] =
+            await db.execute(
+                query,
+                params
+            );
+
+
+        return rows;
+
+
+
+    }catch(error){
+
+
+        console.error(
+            "❌ Error búsqueda nombre:",
+            error
+        );
+
+
+        throw error;
 
     }
-
-
-
-    query += ` LIMIT 5;`;
-
-
-
-    const [rows] =
-      await db.execute(query,params);
-
-
-
-    return rows;
-
-
-
-  } catch(error) {
-
-
-    console.error(
-      "❌ Error búsqueda nombre:",
-      error
-    );
-
-
-    throw error;
-
-  }
 
 }

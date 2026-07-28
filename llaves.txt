@@ -1,0 +1,361 @@
+1:import { exec } from "child_process";
+2:import { db } from "../database/mysql.js";
+4:import {
+9:import {
+15:import {
+21:import {
+28:import {
+33:import {
+38:import {
+43:import {
+47:import {
+51:import {
+56:import {
+60:import {
+65:import {
+71:import {
+76:import {
+93:) {
+113:	if (!op) {
+114:    await sock.sendMessage(from, {
+153:if(atendidoCandidato){
+171:if(reporte){
+181:  if (cleanLower === "restart") {
+183:    if (telefono !== ADMIN) {
+184:      await sock.sendMessage(from, {
+190:    await sock.sendMessage(from, {
+194:    exec("pm2 restart wabot", (error, stdout) => {
+196:      if (error) {
+199:        sock.sendMessage(from, {
+217:if (cleanLower.startsWith("modo ")) {
+219:    if (telefono !== ADMIN) {
+221:        await sock.sendMessage(from, {
+237:    if (!modosValidos.includes(nuevoModo)) {
+239:        await sock.sendMessage(from, {
+253:    await sock.sendMessage(from, {
+254:        text: `✅ Modo cambiado a *${nuevoModo}*.`
+266:  if (cleanLower.startsWith("alta ")) {
+268:    if (telefono !== ADMIN) {
+269:      await sock.sendMessage(from, {
+277:    if (partes.length < 3) {
+278:      await sock.sendMessage(from, {
+290:    if (!/^595\d{9}$/.test(nuevoTelefono)) {
+291:      await sock.sendMessage(from, {
+297:    try {
+304:      await sock.sendMessage(from, {
+307:          `👤 ${nombre}\n` +
+308:          `📞 ${nuevoTelefono}`
+311:    } catch (err) {
+315:      await sock.sendMessage(from, {
+328:if(cleanLower.startsWith("asignar ")){
+330:    if(telefono !== ADMIN){
+332:        await sock.sendMessage(from,{
+344:    if(partes.length !== 3){
+346:        await sock.sendMessage(from,{
+378:    if(!resultado.ok){
+380:        await sock.sendMessage(from,{
+390:    await sock.sendMessage(from,{
+395:${telefonoOperador}
+398:${resultado.candidato.nombre}
+399:${resultado.candidato.apellido}
+402:${resultado.candidato.ciudad}`
+414:if(cleanLower.startsWith("altacandidato")){
+416:    if(telefono !== ADMIN){
+418:        await sock.sendMessage(from,{
+429:    if(partes.length !== 6){
+431:        await sock.sendMessage(from,{
+456:    const ok = await altaCandidato({
+467:    if(!ok){
+469:        await sock.sendMessage(from,{
+476:    await sock.sendMessage(from,{
+480:👤 ${nombre} ${apellido}
+482:🏛 ${cargo}
+484:🏙 ${ciudad}`
+494:if(cleanLower.startsWith("asignarcandidato")){
+497:    if(telefono !== ADMIN){
+499:        await sock.sendMessage(from,{
+510:    if(partes.length !== 3){
+512:        await sock.sendMessage(from,{
+543:    if(!resultado.ok){
+545:        await sock.sendMessage(from,{
+547:            `❌ ${resultado.mensaje}`
+556:    await sock.sendMessage(from,{
+561:${telefonoOperador}
+564:${resultado.candidato.nombre}
+565:${resultado.candidato.apellido}
+567:🏙 ${resultado.candidato.ciudad}`
+579:  if (cleanLower === "cnx") {
+583:    try {
+588:    } catch {
+599:    await sock.sendMessage(from, {
+602:        `${waStatus}\n` +
+603:        `${dbStatus}\n\n` +
+614:  if (cleanLower === "estado") {
+618:    try {
+623:    } catch {
+644:	  await sock.sendMessage(from, {
+647:        `${waStatus}\n` +
+648:        `${dbStatus}\n\n` +
+649:        `⏱ Uptime: ${uptimeHours}h ${uptimeMin % 60}m\n` +
+650:        `🧠 RAM usada: ${memory.toFixed(2)} MB\n` +
+651:        `👥 Sesiones: ${sesionesActivas}`
+661:if (userState[from]?.action === "preguntar_voto") {
+670:    if (!["S","N"].includes(respuesta)) {
+672:        await sock.sendMessage(from,{
+680:    if (respuesta === "S") {
+708:if(opData.length > 0){
+715:await guardarHistorialVoto({
+742:        if (existe.length > 0) {
+761:	} else {
+796:        await sock.sendMessage(from,{
+800:🆔 C.I.: ${cedula}
+802:🕒 ${new Date().toLocaleString("es-PY")}`
+806:    } else {
+809:        await sock.sendMessage(from,{
+813:🆔 C.I.: ${cedula}`
+825:if (userState[from]?.action === "preguntar_guardar") {
+829:    if (!["S","N"].includes(respuesta)) {
+831:        await sock.sendMessage(from,{
+838:    if (respuesta === "N") {
+842:        await sock.sendMessage(from,{
+849:    const { cedula, datos } = userState[from];
+854:    {
+861:	if(!validacion.valido){
+864:	await sock.sendMessage(from,{
+871:	${validacion.candidato.nombre}
+872:	${validacion.candidato.apellido}
+875:	${validacion.candidato.ciudad}`
+901:	if (operadorData.length > 0) {
+911:await guardarAsignacion({
+926:    userState[from]={
+931:    await sock.sendMessage(from,{
+955:if (atendido) {
+963:if (cleanLower.startsWith("quitarvoto ")) {
+966:    if (telefono !== ADMIN) {
+968:        await sock.sendMessage(from,{
+981:    if (!cedulaQuitar) {
+983:        await sock.sendMessage(from,{
+1010:    if (registro.length === 0) {
+1012:        await sock.sendMessage(from,{
+1014:            `❌ No existe registro para la C.I. ${cedulaQuitar}`
+1033:    await sock.sendMessage(from,{
+1038:${cedulaQuitar}
+1040:👤 ${registro[0].nombre} ${registro[0].apellido}`
+1060:if (votacion) {
+1071:  if (/^\d+$/.test(cleanText)) {
+1073:    try {
+1078:      if (!ciudadano) {
+1080:        await sock.sendMessage(from, {
+1082:            `❌ No se encontró ningún registro para la C.I. Nº ${cleanText}`
+1107:👤 *${ciudadano.NOMBRE} ${ciudadano.APELLIDO}*
+1110:${ciudadano.CEDULA}
+1113:${fechaNac}
+1116:${genero}
+1119:${ciudadano.departamento || "-"}
+1122:${ciudadano.distrito || "-"}
+1125:${ciudadano.local || "-"}
+1133: userState[from] = {
+1139:    datos: {
+1158:      await sock.sendMessage(from, {
+1163:    } catch (err) {
+1167:      await sock.sendMessage(from, {
+1196:if(opData.length===0 || !opData[0].departamento){
+1198:    await sock.sendMessage(from,{
+1216:if (cleanLower.startsWith("buscar ")) {
+1220:    if (textoBusqueda.length < 3) {
+1222:        await sock.sendMessage(from,{
+1230:    await sock.sendMessage(from,{
+1234:    try {
+1237:		if (!opData || opData.length === 0) {
+1239:		await sock.sendMessage(from,{
+1253:        if(resultados.length === 0){
+1255:            await sock.sendMessage(from,{
+1256:                text:`🔍 No se encontraron ciudadanos con:\n"${textoBusqueda}"`
+1265:${textoBusqueda.toUpperCase()}
+1269:        resultados.forEach((c,index)=>{
+1272:`${index+1}️⃣ *${c.NOMBRE} ${c.APELLIDO}*
+1274:🆔 C.I.: ${c.CEDULA}
+1285:        await sock.sendMessage(from,{
+1289:    } catch(err){
+1293:        await sock.sendMessage(from,{
+1:import { exec } from "child_process";
+2:import { db } from "../database/mysql.js";
+7:} from "../services/padronService.js";
+12:} from "../services/configBotService.js";
+19:} from "../services/operadorService.js";
+26:} from "../services/asignacionService.js";
+30:} from "../services/historialService.js";
+35:} from "./actualizarHandler.js";
+40:} from "./votacionHandler.js";
+45:} from "../services/historialVotosService.js";
+49:} from "./reportesHandler.js";
+53:} from "../services/permisoService.js";
+58:} from "../services/validacionService.js";
+62:} from "../services/rechazoService.js";
+69:} from "../services/candidatoService.js";
+73:} from "./candidatoHandler.js";
+78:} from "../services/permisoService.js";
+116:    });
+118:	}
+155:}
+173:}
+186:      });
+188:    }
+192:    });
+201:        }).catch(console.error);
+204:      }
+208:    });
+211:  }
+223:        });
+226:    }
+246:        });
+249:    }
+254:        text: `✅ Modo cambiado a *${nuevoModo}*.`
+255:    });
+258:}
+271:      });
+273:    }
+283:      });
+285:    }
+290:    if (!/^595\d{9}$/.test(nuevoTelefono)) {
+293:      });
+295:    }
+307:          `👤 ${nombre}\n` +
+308:          `📞 ${nuevoTelefono}`
+309:      });
+311:    } catch (err) {
+317:      });
+319:    }
+322:  }
+334:        });
+337:    }
+355:        });
+358:    }
+383:        });
+387:    }
+395:${telefonoOperador}
+398:${resultado.candidato.nombre}
+399:${resultado.candidato.apellido}
+402:${resultado.candidato.ciudad}`
+403:    });
+408:}
+420:        });
+423:    }
+442:        });
+445:    }
+465:    });
+471:        });
+474:    }
+480:👤 ${nombre} ${apellido}
+482:🏛 ${cargo}
+484:🏙 ${ciudad}`
+485:    });
+488:}
+501:        });
+504:    }
+523:        });
+526:    }
+547:            `❌ ${resultado.mensaje}`
+548:        });
+552:    }
+561:${telefonoOperador}
+564:${resultado.candidato.nombre}
+565:${resultado.candidato.apellido}
+567:🏙 ${resultado.candidato.ciudad}`
+568:    });
+573:}
+588:    } catch {
+592:    }
+602:        `${waStatus}\n` +
+603:        `${dbStatus}\n\n` +
+605:    });
+608:  }
+623:    } catch {
+627:    }
+647:        `${waStatus}\n` +
+648:        `${dbStatus}\n\n` +
+649:        `⏱ Uptime: ${uptimeHours}h ${uptimeMin % 60}m\n` +
+650:        `🧠 RAM usada: ${memory.toFixed(2)} MB\n` +
+651:        `👥 Sesiones: ${sesionesActivas}`
+652:    });
+655:  }
+674:        });
+677:    }
+712:}
+729:});
+761:	} else {
+793:        }
+800:🆔 C.I.: ${cedula}
+802:🕒 ${new Date().toLocaleString("es-PY")}`
+803:        });
+806:    } else {
+813:🆔 C.I.: ${cedula}`
+814:        });
+816:    }
+822:}
+833:        });
+836:    }
+844:        });
+847:    }
+849:    const { cedula, datos } = userState[from];
+857:    }
+871:	${validacion.candidato.nombre}
+872:	${validacion.candidato.apellido}
+875:	${validacion.candidato.ciudad}`
+876:	});
+881:	}
+906:	}
+924:});
+929:    };
+939:    });
+942:}
+957:}
+970:        });
+973:    }
+990:        });
+993:    }
+1014:            `❌ No existe registro para la C.I. ${cedulaQuitar}`
+1015:        });
+1018:    }
+1038:${cedulaQuitar}
+1040:👤 ${registro[0].nombre} ${registro[0].apellido}`
+1041:    });
+1045:}
+1062:}
+1082:            `❌ No se encontró ningún registro para la C.I. Nº ${cleanText}`
+1083:        });
+1086:      }
+1107:👤 *${ciudadano.NOMBRE} ${ciudadano.APELLIDO}*
+1110:${ciudadano.CEDULA}
+1113:${fechaNac}
+1116:${genero}
+1119:${ciudadano.departamento || "-"}
+1122:${ciudadano.distrito || "-"}
+1125:${ciudadano.local || "-"}
+1154:    }
+1156:};
+1160:      });
+1163:    } catch (err) {
+1170:      });
+1172:    }
+1176:  }
+1201:    });
+1204:}
+1224:        });
+1227:    }
+1232:    });
+1241:		});
+1244:		}
+1256:                text:`🔍 No se encontraron ciudadanos con:\n"${textoBusqueda}"`
+1257:            });
+1260:        }
+1265:${textoBusqueda.toUpperCase()}
+1272:`${index+1}️⃣ *${c.NOMBRE} ${c.APELLIDO}*
+1274:🆔 C.I.: ${c.CEDULA}
+1280:        });
+1287:        });
+1289:    } catch(err){
+1295:        });
+1297:    }
+1301:}
+1304:}
