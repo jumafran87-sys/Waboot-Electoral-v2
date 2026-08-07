@@ -7,7 +7,7 @@ import { db } from "../database/mysql.js";
 
 async function obtenerTablaPadron() {
 
-    let nombreTablaPadron = "regciv";
+    let nombreTablaPadron = "regciv2";
 
 
     try {
@@ -51,58 +51,72 @@ async function obtenerTablaPadron() {
 
 
 // =====================================================
-// CONSULTA POR CÉDULA
+// CONSULTA PADRON POR CÉDULA
 // =====================================================
 
 export async function consultarPadron(cedula){
 
-
     try{
-
 
         const nombreTablaPadron =
             await obtenerTablaPadron();
 
 
 
+	console.log(
+"📌 TABLA USADA:",
+nombreTablaPadron
+)
+
+
         const query = `
 
-        SELECT
+       SELECT
 
-        r.CEDULA,
-        r.NOMBRE,
-        r.APELLIDO,
-        r.FEC_NAC,
-        r.SEXO,
+r.CEDULA,
+r.NOMBRE,
+r.APELLIDO,
 
-        r.DEPART,
-        r.DISTRITO,
-        r.ZONA,
+r.FEC_NAC,
+r.EDAD,
+r.SEXO,
 
-        d.DESCRIP AS departamento,
+r.MESA,
+r.ORDEN,
 
-        di.DESCRIP AS distrito,
+r.DES_VOTO,
+r.ES_INDIGEN,
 
-        l.DESCRIP AS local
+r.DEPART,
+r.DISTRITO,
+r.ZONA,
+r.LOCAL,
+
+
+            d.DESCRIP AS departamento,
+
+            di.DESCRIP AS distrito,
+
+            l.DESCRIP AS local
 
 
         FROM ${nombreTablaPadron} r
 
 
         LEFT JOIN dep d
-        ON d.DEPART = r.DEPART
+            ON d.DEPART = r.DEPART
 
 
         LEFT JOIN dis di
-        ON di.DEPART = r.DEPART
-        AND di.DISTRITO = r.DISTRITO
+            ON di.DEPART = r.DEPART
+            AND di.DISTRITO = r.DISTRITO
 
 
         LEFT JOIN loc l
-        ON l.DPTO = r.DEPART
-        AND l.DISTRITO = r.DISTRITO
-        AND l.ZONA = r.ZONA
-        AND l.LOCAL = r.LOCAL
+            ON l.DPTO = r.DEPART
+            AND l.DISTRITO = r.DISTRITO
+            AND l.ZONA = r.ZONA
+            AND l.LOCAL = r.LOCAL
 
 
         WHERE r.CEDULA = ?
@@ -113,12 +127,21 @@ export async function consultarPadron(cedula){
         `;
 
 
-
         const [rows] =
             await db.execute(
                 query,
                 [cedula]
             );
+
+
+console.log(
+    "📋 CONSULTA REGCIV2:",
+    cedula,
+    rows.length > 0 ? rows[0] : "NO ENCONTRADO"
+	
+);
+
+
 
 
 
@@ -130,17 +153,14 @@ export async function consultarPadron(cedula){
 
     }catch(error){
 
-
         console.error(
             "❌ Error consultar padrón:",
             error
         );
 
-
         throw error;
 
     }
-
 
 }
 
@@ -235,36 +255,28 @@ AND r.DISTRITO = ?
 
 
 
-        // BUSCAR CADA PALABRA
+// BUSQUEDA SOBRE NOMBRE_COMPLETO
 
-        for(const palabra of palabras){
+if(palabras.length > 0){
+
+    const textoBusqueda =
+        `%${palabras.join('%')}%`;
 
 
-            query += `
+    query += `
 
-AND
-(
-    r.NOMBRE LIKE ?
-    OR
-    r.APELLIDO LIKE ?
-)
+AND r.NOMBRE_COMPLETO LIKE ?
 
 `;
 
-            params.push(`%${palabra}%`);
-            params.push(`%${palabra}%`);
+    params.push(textoBusqueda);
 
-        }
-
+}
 
 
-        query += `
+query += `
 
-ORDER BY
-r.APELLIDO,
-r.NOMBRE
-
-LIMIT 5
+LIMIT 10
 
 `;
 

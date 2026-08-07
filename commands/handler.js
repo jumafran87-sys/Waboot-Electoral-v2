@@ -2,9 +2,12 @@ import { exec } from "child_process";
 import { db } from "../database/mysql.js";
 
 import {
-  consultarPadron,
-  buscarPorNombre
+    consultarPadron
 } from "../services/padronService.js";
+
+import {
+    buscarPorNombre
+} from "../services/busquedaService.js";
 
 import {
     obtenerModoBot,
@@ -111,7 +114,7 @@ console.log("🟢 MODO BOT:", modo);
   const op = await validarOperador(telefono);
 
 	if (!op) {
-    await sock.sendMessage(from, {
+    await sendMessageSafe(from, {
         text: "⛔ No estás autorizado para usar este sistema."
     });
     return;
@@ -1068,68 +1071,87 @@ if (votacion) {
 
 
 
-  // ===================================================
-  // CONSULTA POR CÉDULA
-  // ===================================================
+ // ===================================================
+// CONSULTA POR CÉDULA
+// ===================================================
 
-  if (/^\d+$/.test(cleanText)) {
+if (/^\d+$/.test(cleanText)) {
 
     try {
 
-      const ciudadano = await consultarPadron(cleanText);
+        const ciudadano = await consultarPadron(cleanText);
 
 
-      if (!ciudadano) {
+        if (!ciudadano) {
 
-        await sock.sendMessage(from, {
-          text:
-            `❌ No se encontró ningún registro para la C.I. Nº ${cleanText}`
-        });
+            await sock.sendMessage(from, {
+                text:
+                `❌ No se encontró ningún registro para la C.I. Nº ${cleanText}`
+            });
 
-        return;
-      }
-
-
-      const fechaNac =
-        ciudadano.FEC_NAC
-          ? new Date(ciudadano.FEC_NAC)
-              .toLocaleDateString("es-PY")
-          : "-";
+            return;
+        }
 
 
-      const genero =
-        ciudadano.SEXO === "M"
-          ? "Masculino"
-          : ciudadano.SEXO === "F"
+
+        const fechaNac =
+            ciudadano.FEC_NAC
+            ? new Date(ciudadano.FEC_NAC)
+                .toLocaleDateString("es-PY")
+            : "-";
+
+
+
+        const genero =
+            ciudadano.SEXO === "M"
+            ? "Masculino"
+            : ciudadano.SEXO === "F"
             ? "Femenino"
             : "-";
 
 
+
+
 // ================== TOTAL EN LISTA ==================
 
-const [totalRows] = await db.execute(
-`
-SELECT COUNT(DISTINCT cedula) AS total
-FROM asignaciones
-WHERE operador_telefono = ?
-`,
-[
-    telefono
-]
-);
+        const [totalRows] = await db.execute(
+        `
+        SELECT COUNT(DISTINCT cedula) AS total
+        FROM asignaciones
+        WHERE operador_telefono = ?
+        `,
+        [
+            telefono
+        ]
+        );
+
+
+        const totalLista =
+            totalRows?.[0]?.total || 0;
 
 
 
-console.log("TOTAL LISTA:", totalLista, "OPERADOR:", telefono);
+        console.log(
+            "TOTAL LISTA:",
+            totalLista,
+            "OPERADOR:",
+            telefono
+        );
 
-const totalLista =
-totalRows?.[0]?.total || 0;
+
+
+
+
+        const esIndigen =
+            ciudadano.ES_INDIGEN === "S"
+            ? "Sí"
+            : "No";
 
 
 
 
 
-      const plantilla =
+        const plantilla =
 `🇵🇾 *PADRÓN ELECTORAL*
 
 👤 *${ciudadano.NOMBRE} ${ciudadano.APELLIDO}*
@@ -1140,8 +1162,25 @@ ${ciudadano.CEDULA}
 🎂 *Fecha nacimiento*
 ${fechaNac}
 
+🎯 *Edad*
+${ciudadano.EDAD || "-"}
+
 🚻 *Sexo*
 ${genero}
+
+🪑 *Mesa*
+${ciudadano.MESA || "-"}
+
+🔢 *Orden*
+${ciudadano.ORDEN || "-"}
+
+🗳️ *Estado voto*
+${ciudadano.DES_VOTO || "-"}
+
+🌱 *Indígena*
+${esIndigen}
+
+━━━━━━━━━━━━━━
 
 📍 *Departamento*
 ${ciudadano.departamento || "-"}
@@ -1162,89 +1201,105 @@ ${modo === "ACTUALIZACION"
 :
 ""}`;
 
-  
- if(modo === "ACTUALIZACION"){
 
-userState[from] = {
 
-    action: "preguntar_guardar",
 
-    cedula: ciudadano.CEDULA,
 
-    datos: {
 
-        nombre: ciudadano.NOMBRE,
-        apellido: ciudadano.APELLIDO,
-        local: ciudadano.local,
+        if(modo === "ACTUALIZACION"){
 
-        mesa: ciudadano.MESA || null,
-        orden: ciudadano.ORDEN || null,
-        celular: ciudadano.CELULAR || null,
 
-        // códigos reales del padrón
-        depart: ciudadano.DEPART,
-        distrito: ciudadano.DISTRITO,
-        zona: ciudadano.ZONA
+            userState[from] = {
 
-    }
+                action: "preguntar_guardar",
 
-};
+                cedula: ciudadano.CEDULA,
 
-}
 
-      await sock.sendMessage(from, {
-        text: plantilla
-      });
+                datos: {
+
+                    nombre:
+                    ciudadano.NOMBRE,
+
+
+                    apellido:
+                    ciudadano.APELLIDO,
+
+
+                    local:
+                    ciudadano.local,
+
+
+                    mesa:
+                    ciudadano.MESA || null,
+
+
+                    orden:
+                    ciudadano.ORDEN || null,
+
+
+                    celular:
+                    ciudadano.CELULAR || null,
+
+
+
+                    depart:
+                    ciudadano.DEPART,
+
+
+                    distrito:
+                    ciudadano.DISTRITO,
+
+
+                    zona:
+                    ciudadano.ZONA
+
+                }
+
+            };
+
+
+        }
+
+
+
+
+
+        await sock.sendMessage(from, {
+            text: plantilla
+        });
+
+
+
 
 
     } catch (err) {
 
-      console.error(err);
 
-      await sock.sendMessage(from, {
-        text:
-          "❌ Ocurrió un error al procesar la consulta en el padrón."
-      });
+        console.error(err);
+
+
+        await sock.sendMessage(from, {
+
+            text:
+            "❌ Ocurrió un error al procesar la consulta en el padrón."
+
+        });
+
 
     }
 
 
-    return;
-  }
-
-
-const [opData] = await db.execute(
-`
-SELECT 
-    c.departamento,
-    c.distrito
-FROM operadores o
-LEFT JOIN candidatos c
-ON c.id=o.candidato_id
-WHERE o.telefono=?
-LIMIT 1
-`,
-[
-    telefono
-]
-);
-
-
-if(opData.length===0 || !opData[0].departamento){
-
-    await sock.sendMessage(from,{
-        text:
-        "⚠️ Este operador todavía no tiene candidato asignado."
-    });
 
     return;
+
 }
 
 
-console.log(
-"DATOS CANDIDATO OPERADOR:",
-opData[0]
-);
+
+
+
+
 
 // ===================================================
 // BÚSQUEDA POR NOMBRE CON COMANDO BUSCAR
@@ -1252,50 +1307,125 @@ opData[0]
 
 if (cleanLower.startsWith("buscar ")) {
 
-    const textoBusqueda = cleanText.substring(7).trim();
+
+    const textoBusqueda =
+        cleanText.substring(7).trim();
+
+
 
     if (textoBusqueda.length < 3) {
 
+
         await sock.sendMessage(from,{
-            text:"❌ Escriba al menos 3 caracteres."
+            text:
+            "❌ Escriba al menos 3 caracteres."
         });
 
+
         return;
+
     }
 
 
-    await sock.sendMessage(from,{
-        text:"🔎 Buscando en el padrón..."
-    });
+
 
 
     try {
 
-        if (!opData || opData.length === 0) {
 
-            await sock.sendMessage(from,{
-                text:"❌ El operador no tiene un candidato asignado."
-            });
+        let departamento = null;
+        let distrito = null;
 
-            return;
+
+
+
+
+        if (telefono !== ADMIN) {
+
+
+
+            const [opData] = await db.execute(
+            `
+            SELECT
+                c.departamento,
+                c.distrito
+            FROM operadores o
+            LEFT JOIN candidatos c
+                ON c.id = o.candidato_id
+            WHERE o.telefono = ?
+            LIMIT 1
+            `,
+            [
+                telefono
+            ]
+            );
+
+
+
+
+            if (
+                opData.length === 0 ||
+                !opData[0].departamento
+            ) {
+
+
+                await sock.sendMessage(from,{
+
+                    text:
+                    "⚠️ Este operador todavía no tiene candidato asignado."
+
+                });
+
+
+                return;
+
+            }
+
+
+
+
+            departamento =
+                opData[0].departamento;
+
+
+            distrito =
+                opData[0].distrito;
+
+
         }
 
 
-        const resultados = await buscarPorNombre(
-            textoBusqueda,
-            opData[0].departamento,
-            opData[0].distrito
-        );
+
+
+
+        const resultados =
+            await buscarPorNombre(
+                textoBusqueda,
+                departamento,
+                distrito
+            );
+
+
+
 
 
         if(resultados.length === 0){
 
+
             await sock.sendMessage(from,{
-                text:`🔍 No se encontraron ciudadanos con:\n"${textoBusqueda}"`
+
+                text:
+                `🔍 No se encontraron ciudadanos con:\n"${textoBusqueda}"`
+
             });
 
+
             return;
+
         }
+
+
+
 
 
         let respuestaBusqueda =
@@ -1306,12 +1436,18 @@ ${textoBusqueda.toUpperCase()}
 `;
 
 
+
+
         resultados.forEach((c,index)=>{
 
+
             respuestaBusqueda +=
-`${index+1}️⃣ *${c.NOMBRE} ${c.APELLIDO}*
+
+`${index + 1}️⃣ *${c.NOMBRE} ${c.APELLIDO}*
 
 🆔 C.I.: ${c.CEDULA}
+
+📍 ${c.departamento || "-"} - ${c.distrito || "-"}
 
 ━━━━━━━━━━━━━━
 
@@ -1320,31 +1456,51 @@ ${textoBusqueda.toUpperCase()}
         });
 
 
+
+
         respuestaBusqueda +=
+
 `💡 Escriba la C.I. para ver los datos completos.`;
 
 
+
+
+
         await sock.sendMessage(from,{
-            text:respuestaBusqueda
+
+            text:
+            respuestaBusqueda
+
         });
+
+
 
 
     } catch(err){
 
+
         console.error(err);
 
 
+
         await sock.sendMessage(from,{
-            text:"❌ Error al buscar ciudadanos."
+
+            text:
+            "❌ Error al buscar ciudadanos."
+
         });
 
+
     }
+
 
 
     return;
 
 }
 
+// ===================================================
+// FIN HANDLE COMMAND
+// ===================================================
 
-// AQUÍ CIERRA handleCommand
 }
