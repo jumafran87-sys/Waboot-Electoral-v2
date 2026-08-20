@@ -106,39 +106,39 @@ console.log("🟢 MODO BOT:", modo);
 
 
 
-  // ===================================================
-  // VALIDAR OPERADOR
-  // ===================================================
+ // ===================================================
+// VALIDAR OPERADOR
+// ===================================================
 
+const op = await validarOperador(telefono);
 
-  const op = await validarOperador(telefono);
+if (!op) {
 
-	if (!op) {
-    await sendMessageSafe(from, {
+    await sock.sendMessage(from, {
         text: "⛔ No estás autorizado para usar este sistema."
     });
+
     return;
-	}
-	
-	const usuario = await obtenerRol(telefono);
+}
 
 
-	const zonaOperador =
+const usuario = await obtenerRol(telefono);
+
+
+const zonaOperador =
     await obtenerZonaOperador(telefono);
 
-	const departamento =
+const departamento =
     zonaOperador?.departamento ?? null;
 
-	const distrito =
+const distrito =
     zonaOperador?.distrito ?? null;
 
 
-
-	console.log(
-	"👤 USUARIO:",
-	usuario
-	);
-	
+console.log(
+    "👤 USUARIO:",
+    usuario
+);
 
 // ================================
 // MODULO CANDIDATOS
@@ -262,317 +262,271 @@ VOTACION`
   
   
 
-  // ===================================================
-  // ALTA OPERADOR
-  // ===================================================
+ // ===================================================
+// ALTA OPERADOR
+// ===================================================
 
-  if (cleanLower.startsWith("alta ")) {
+if (cleanLower.startsWith("alta ")) {
 
     if (telefono !== ADMIN) {
-      await sock.sendMessage(from, {
-        text: "⛔ No autorizado."
-      });
-      return;
+
+        await sock.sendMessage(from, {
+            text: "⛔ No autorizado."
+        });
+
+        return;
     }
 
-    const partes = cleanText.split(" ");
+
+    // ===================================================
+    // SEPARAR COMANDO
+    // ===================================================
+
+    const partes = cleanText.trim().split(/\s+/);
+
+
+    /*
+        Formato:
+
+        alta telefono nombre
+
+        o:
+
+        alta telefono nombre candidato_id
+
+        Ejemplo:
+
+        alta 595981935724 HeriMarmol 1
+    */
+
 
     if (partes.length < 3) {
-      await sock.sendMessage(from, {
-        text:
-          "❌ Formato incorrecto.\n\n" +
-          "Usá:\n" +
-          "alta 595981234567 Juan Perez"
-      });
-      return;
+
+        await sock.sendMessage(from, {
+            text:
+`❌ Formato incorrecto.
+
+Usá:
+
+alta telefono nombre
+
+o:
+
+alta telefono nombre candidato_id
+
+Ejemplo:
+
+alta 595981935724 Heri Marmol 1`
+        });
+
+        return;
     }
 
-    const nuevoTelefono = partes[1].replace(/\D/g, "");
-    const nombre = partes.slice(2).join(" ");
+
+    // ===================================================
+    // DATOS DEL OPERADOR
+    // ===================================================
+
+    const nuevoTelefono =
+        partes[1].replace(/\D/g, "");
+
+
+    // ===================================================
+    // CANDIDATO OPCIONAL
+    // ===================================================
+
+    let candidato_id = null;
+
+    /*
+       Si hay un cuarto dato,
+       lo tomamos como candidato_id.
+    */
+
+    if (partes.length >= 4) {
+
+        candidato_id =
+            Number(partes[partes.length - 1]);
+
+        if (
+            !Number.isInteger(candidato_id) ||
+            candidato_id <= 0
+        ) {
+
+            await sock.sendMessage(from, {
+                text:
+                "❌ El candidato_id debe ser un número válido."
+            });
+
+            return;
+        }
+    }
+
+
+    // ===================================================
+    // NOMBRE
+    // ===================================================
+
+    let nombre;
+
+    if (candidato_id) {
+
+        // El último elemento es el candidato
+        nombre =
+            partes
+                .slice(2, -1)
+                .join(" ")
+                .trim();
+
+    } else {
+
+        nombre =
+            partes
+                .slice(2)
+                .join(" ")
+                .trim();
+    }
+
+
+    // ===================================================
+    // VALIDAR TELÉFONO
+    // ===================================================
 
     if (!/^595\d{9}$/.test(nuevoTelefono)) {
-      await sock.sendMessage(from, {
-        text: "❌ Número inválido. Debe iniciar con 595."
-      });
-      return;
+
+        await sock.sendMessage(from, {
+            text:
+            "❌ Número inválido. Debe iniciar con 595."
+        });
+
+        return;
     }
+
+
+    // ===================================================
+    // VALIDAR NOMBRE
+    // ===================================================
+
+    if (!nombre) {
+
+        await sock.sendMessage(from, {
+            text:
+            "❌ Debés indicar el nombre del operador."
+        });
+
+        return;
+    }
+
 
     try {
 
-     await altaOperador(
-    nuevoTelefono,
-    nombre
-	);
+        // =================================================
+        // CREAR OPERADOR
+        // =================================================
 
-      await sock.sendMessage(from, {
-        text:
-          "✅ Operador registrado correctamente.\n\n" +
-          `👤 ${nombre}\n` +
-          `📞 ${nuevoTelefono}`
-      });
+        await altaOperador(
+            nuevoTelefono,
+            nombre
+        );
+
+
+        // =================================================
+        // SI VIENE CANDIDATO → ASIGNAR AUTOMÁTICAMENTE
+        // =================================================
+
+        let resultado = null;
+
+
+        if (candidato_id) {
+
+            resultado =
+                await asignarCandidatoOperador(
+                    nuevoTelefono,
+                    candidato_id
+                );
+
+
+            // =============================================
+            // SI FALLA LA ASIGNACIÓN
+            // =============================================
+
+            if (!resultado.ok) {
+
+                await sock.sendMessage(from, {
+                    text:
+`⚠️ Operador registrado, pero no se pudo asignar el candidato.
+
+👤 ${nombre}
+📞 ${nuevoTelefono}
+
+❌ ${resultado.mensaje}
+
+Podés asignarlo posteriormente con:
+
+asignar ${nuevoTelefono} ${candidato_id}`
+                });
+
+                return;
+            }
+        }
+
+
+        // =================================================
+        // RESPUESTA FINAL
+        // =================================================
+
+        if (resultado?.ok) {
+
+            await sock.sendMessage(from, {
+                text:
+`✅ OPERADOR REGISTRADO
+
+👤 ${nombre}
+📞 ${nuevoTelefono}
+
+🎯 Candidato:
+${resultado.candidato.nombre} ${resultado.candidato.apellido}
+
+🏙 Ciudad:
+${resultado.candidato.ciudad}
+
+🟢 Estado: ACTIVO`
+            });
+
+        } else {
+
+            await sock.sendMessage(from, {
+                text:
+`✅ OPERADOR REGISTRADO
+
+👤 ${nombre}
+📞 ${nuevoTelefono}
+
+🎯 Candidato:
+Sin asignar
+
+🟢 Estado: ACTIVO`
+            });
+
+        }
+
 
     } catch (err) {
 
-      console.error(err);
-
-      await sock.sendMessage(from, {
-        text: "❌ Error registrando operador."
-      });
-
-    }
-
-    return;
-  }
-
-// ===================================================
-// ASIGNAR CANDIDATO A OPERADOR
-// ===================================================
-
-if(cleanLower.startsWith("asignar ")){
-
-    if(telefono !== ADMIN){
-
-        await sock.sendMessage(from,{
-            text:"⛔ No autorizado."
-        });
-
-        return;
-    }
-
-
-    const partes =
-        cleanText.split(" ");
-
-
-    if(partes.length !== 3){
-
-        await sock.sendMessage(from,{
-            text:
-`❌ Formato:
-
-asignar telefono candidato_id
-
-Ejemplo:
-
-asignar 595992719523 1`
-        });
-
-        return;
-    }
-
-
-    const telefonoOperador =
-        partes[1];
-
-
-    const candidato_id =
-        Number(partes[2]);
-
-
-
-    const resultado =
-        await asignarCandidatoOperador(
-            telefonoOperador,
-            candidato_id
+        console.error(
+            "❌ Error registrando operador:",
+            err
         );
 
 
-
-    if(!resultado.ok){
-
-        await sock.sendMessage(from,{
+        await sock.sendMessage(from, {
             text:
-            "❌ " + resultado.mensaje
+            "❌ Error registrando operador."
         });
 
-        return;
-
     }
-
-
-    await sock.sendMessage(from,{
-        text:
-`✅ Operador asignado correctamente.
-
-📞 Operador:
-${telefonoOperador}
-
-👤 Candidato:
-${resultado.candidato.nombre}
-${resultado.candidato.apellido}
-
-🏙 Ciudad:
-${resultado.candidato.ciudad}`
-    });
 
 
     return;
-
-}
-
-// ===================================================
-// ALTA CANDIDATO (ADMIN)
-// ===================================================
-
-if(cleanLower.startsWith("altacandidato")){
-
-    if(telefono !== ADMIN){
-
-        await sock.sendMessage(from,{
-            text:"⛔ No autorizado."
-        });
-
-        return;
-    }
-
-    const texto = cleanText.substring(14).trim();
-
-    const partes = texto.split(";");
-
-    if(partes.length !== 6){
-
-        await sock.sendMessage(from,{
-            text:
-`❌ Formato incorrecto.
-
-Usar:
-
-altacandidato Nombre;Apellido;Cargo;Ciudad;Departamento;Distrito
-
-Ejemplo:
-
-altacandidato Juan;Perez;Concejal;Mariano Roque Alonso;11;19`
-        });
-
-        return;
-    }
-
-    const [
-        nombre,
-        apellido,
-        cargo,
-        ciudad,
-        departamento,
-        distrito
-    ] = partes.map(x=>x.trim());
-
-    const ok = await altaCandidato({
-
-        nombre,
-        apellido,
-        cargo,
-        ciudad,
-        departamento:Number(departamento),
-        distrito:Number(distrito)
-
-    });
-
-    if(!ok){
-
-        await sock.sendMessage(from,{
-            text:"⚠️ Ese candidato ya existe."
-        });
-
-        return;
-    }
-
-    await sock.sendMessage(from,{
-        text:
-`✅ Candidato registrado correctamente.
-
-👤 ${nombre} ${apellido}
-
-🏛 ${cargo}
-
-🏙 ${ciudad}`
-    });
-
-    return;
-}
-
-// ===================================================
-// ASIGNAR CANDIDATO A OPERADOR (ADMIN)
-// ===================================================
-
-if(cleanLower.startsWith("asignarcandidato")){
-
-
-    if(telefono !== ADMIN){
-
-        await sock.sendMessage(from,{
-            text:"⛔ No autorizado."
-        });
-
-        return;
-    }
-
-
-    const partes = cleanText.split(" ");
-
-
-    if(partes.length !== 3){
-
-        await sock.sendMessage(from,{
-            text:
-`❌ Formato incorrecto.
-
-Usar:
-
-asignarcandidato telefono id_candidato
-
-Ejemplo:
-
-asignarcandidato 595981000000 1`
-        });
-
-        return;
-    }
-
-
-    const telefonoOperador = partes[1];
-
-    const candidato_id = Number(partes[2]);
-
-
-
-    const resultado =
-        await asignarCandidatoOperador(
-            telefonoOperador,
-            candidato_id
-        );
-
-
-
-    if(!resultado.ok){
-
-        await sock.sendMessage(from,{
-            text:
-            `❌ ${resultado.mensaje}`
-        });
-
-        return;
-
-    }
-
-
-
-    await sock.sendMessage(from,{
-        text:
-`✅ Candidato asignado correctamente.
-
-📱 Operador:
-${telefonoOperador}
-
-👤 Candidato:
-${resultado.candidato.nombre}
-${resultado.candidato.apellido}
-
-🏙 ${resultado.candidato.ciudad}`
-    });
-
-
-    return;
-
 }
 
   // ===================================================
@@ -823,121 +777,403 @@ await guardarHistorialVoto({
 
     return;
 }
+// ===================================================
+// GUARDAR ASIGNACIÓN
+// OPERADOR O CANDIDATO
+// ===================================================
 
-// ================== GUARDAR ASIGNACIÓN ==================
 if (userState[from]?.action === "preguntar_guardar") {
 
     const respuesta = cleanText.toUpperCase();
 
-    if (!["S","N"].includes(respuesta)) {
 
-        await sock.sendMessage(from,{
-            text:"✍️ Respondé *S* o *N*."
+    // ===================================================
+    // VALIDAR RESPUESTA
+    // ===================================================
+
+    if (!["S", "N"].includes(respuesta)) {
+
+        await sock.sendMessage(from, {
+            text: "✍️ Respondé *S* o *N*."
         });
 
         return;
     }
+
+
+    // ===================================================
+    // CANCELAR
+    // ===================================================
 
     if (respuesta === "N") {
 
         delete userState[from];
 
-        await sock.sendMessage(from,{
-            text:"❌ Registro cancelado.\n\nPodés consultar otra cédula."
+        await sock.sendMessage(from, {
+            text:
+`❌ Registro cancelado.
+
+Podés consultar otra cédula.`
         });
 
         return;
     }
 
+
+    // ===================================================
+    // OBTENER DATOS DE LA PERSONA
+    // ===================================================
+
     const { cedula, datos } = userState[from];
-	
-	console.log("DATOS ANTES VALIDACION:", datos);
-	
-	const validacion =
-	await validarZonaCandidato(
-    telefono,
-    {
-        cedula,
-        distrito: datos.distrito
+
+
+    console.log(
+        "📋 DATOS ANTES VALIDACION:",
+        datos
+    );
+
+
+    console.log(
+        "👤 USUARIO QUE GUARDA:",
+        {
+            rol: usuario?.rol,
+            telefono,
+            candidato_id_usuario: usuario?.candidato_id
+        }
+    );
+
+
+    // ===================================================
+    // VARIABLES
+    // ===================================================
+
+    let candidato_id = null;
+
+    let ciudad = null;
+
+
+    // ===================================================
+    // OBTENER CANDIDATO VINCULADO AL TELÉFONO
+    //
+    // IMPORTANTE:
+    // Tanto CANDIDATO como OPERADOR se buscan por
+    // teléfono en la tabla operadores.
+    //
+    // Esto evita depender de usuario.candidato_id.
+    // ===================================================
+
+    const [vinculacion] = await db.execute(
+        `
+        SELECT
+            o.telefono,
+            o.candidato_id,
+
+            c.id AS candidato_real_id,
+            c.nombre AS candidato_nombre,
+            c.apellido AS candidato_apellido,
+            c.ciudad AS candidato_ciudad,
+            c.distrito AS candidato_distrito
+
+        FROM operadores o
+
+        LEFT JOIN candidatos c
+            ON c.id = o.candidato_id
+
+        WHERE o.telefono = ?
+
+        LIMIT 1
+        `,
+        [
+            telefono
+        ]
+    );
+
+
+    console.log(
+        "🔎 VINCULACIÓN EN BASE DE DATOS:",
+        vinculacion
+    );
+
+
+    // ===================================================
+    // SI ENCONTRAMOS LA VINCULACIÓN
+    // ===================================================
+
+    if (vinculacion.length > 0) {
+
+        candidato_id =
+            vinculacion[0].candidato_id || null;
+
+
+        ciudad =
+            vinculacion[0].candidato_ciudad || null;
+
+
+        console.log(
+            "🎯 CANDIDATO OBTENIDO DESDE OPERADORES:",
+            {
+                telefono,
+                candidato_id,
+                ciudad
+            }
+        );
+
     }
-);
 
 
+    // ===================================================
+    // RESPALDO:
+    // SI usuario YA TRAE candidato_id
+    // ===================================================
+
+    if (!candidato_id && usuario?.candidato_id) {
+
+        candidato_id =
+            usuario.candidato_id;
 
 
-	if(!validacion.valido){
+        console.log(
+            "🎯 CANDIDATO OBTENIDO DESDE USUARIO:",
+            candidato_id
+        );
 
 
-	await sock.sendMessage(from,{
-	text:
-	`⚠️ No se puede registrar.
+        // Obtener ciudad
 
-	Esta persona pertenece a otro distrito.
+        const [candidatoData] =
+            await db.execute(
+                `
+                SELECT
+                    id,
+                    nombre,
+                    apellido,
+                    ciudad,
+                    distrito
 
-	👤 Candidato:
-	${validacion.candidato.nombre}
-	${validacion.candidato.apellido}
+                FROM candidatos
 
-	🏙 Ciudad registrada:
-	${validacion.candidato.ciudad}`
-	});
+                WHERE id = ?
 
-
-	return;
-
-	}
-	// ================== OBTENER CANDIDATO DEL OPERADOR ==================
-
-	const [operadorData] = await db.execute(
-    `SELECT 
-        o.candidato_id,
-        c.ciudad
-     FROM operadores o
-     LEFT JOIN candidatos c
-        ON c.id = o.candidato_id
-     WHERE o.telefono = ?
-     LIMIT 1`,
-    [telefono]
-	);
+                LIMIT 1
+                `,
+                [
+                    candidato_id
+                ]
+            );
 
 
-	let candidato_id = null;
-	let ciudad = null;
+        if (candidatoData.length > 0) {
+
+            ciudad =
+                candidatoData[0].ciudad || null;
 
 
-	if (operadorData.length > 0) {
+            console.log(
+                "🏙️ CIUDAD CANDIDATO:",
+                ciudad
+            );
 
-    candidato_id = operadorData[0].candidato_id;
-    ciudad = operadorData[0].ciudad;
+        }
 
-	}
-	
-	
-	
+    }
 
-await guardarAsignacion({
 
-    operador: telefono,
-    cedula,
-    nombre: datos.nombre,
-    apellido: datos.apellido,
-    local: datos.local,
-    mesa: datos.mesa,
-    orden: datos.orden,
-    celular: datos.celular,
-    ciudad,
-    candidato_id
+    // ===================================================
+    // VERIFICAR CANDIDATO
+    // ===================================================
 
-});
+    if (!candidato_id) {
 
-    userState[from]={
-        action:"preguntar_actualizar",
+        console.error(
+            "❌ NO SE ENCONTRÓ candidato_id",
+            {
+                telefono,
+                rol: usuario?.rol,
+                usuario_candidato_id:
+                    usuario?.candidato_id,
+                vinculacion
+            }
+        );
+
+
+        await sock.sendMessage(from, {
+            text:
+`❌ *No se pudo determinar el candidato.*
+
+No se puede guardar la asignación.
+
+📞 Teléfono:
+${telefono}
+
+👤 Rol:
+${usuario?.rol || "-"}
+
+⚠️ Verificá que este número esté vinculado correctamente a un candidato.`
+        });
+
+        return;
+    }
+
+
+    // ===================================================
+    // MOSTRAR DATOS ANTES DE VALIDAR
+    // ===================================================
+
+    console.log(
+        "🎯 CANDIDATO ASIGNADO:",
+        {
+            candidato_id,
+            ciudad
+        }
+    );
+
+
+    // ===================================================
+    // VALIDAR ZONA DEL CANDIDATO
+    // ===================================================
+
+    const validacion =
+        await validarZonaCandidato(
+            telefono,
+            {
+                cedula,
+                distrito: datos.distrito
+            },
+            candidato_id
+        );
+
+
+    // ===================================================
+    // PERSONA PERTENECE A OTRO DISTRITO
+    // ===================================================
+
+    if (!validacion.valido) {
+
+        console.log(
+            "⛔ VALIDACIÓN RECHAZADA:",
+            validacion
+        );
+
+
+        await sock.sendMessage(from, {
+            text:
+`⚠️ *NO SE PUEDE REGISTRAR*
+
+Esta persona pertenece a otro distrito.
+
+👤 *Candidato:*
+${validacion.candidato?.nombre || ""}
+${validacion.candidato?.apellido || ""}
+
+🏙️ *Ciudad registrada:*
+${validacion.candidato?.ciudad || "-"}
+
+❌ *Motivo:*
+${validacion.motivo || "Distrito diferente"}`
+        });
+
+        return;
+    }
+
+
+    // ===================================================
+    // GUARDAR ASIGNACIÓN
+    // ===================================================
+
+    await guardarAsignacion({
+
+        // Teléfono de quien realizó la carga
+        operador:
+            telefono,
+
+        cedula,
+
+        nombre:
+            datos.nombre,
+
+        apellido:
+            datos.apellido,
+
+        local:
+            datos.local,
+
+        mesa:
+            datos.mesa,
+
+        orden:
+            datos.orden,
+
+        celular:
+            datos.celular,
+
+        ciudad,
+
+        candidato_id
+
+    });
+
+
+    // ===================================================
+    // LOG DE CONFIRMACIÓN
+    // ===================================================
+
+    console.log(
+        "✅ ASIGNACIÓN GUARDADA:",
+        {
+            operador: telefono,
+            candidato_id,
+            cedula,
+            nombre: datos.nombre,
+            apellido: datos.apellido
+        }
+    );
+
+
+    // ===================================================
+    // PREGUNTAR SI QUIERE ACTUALIZAR
+    // ===================================================
+
+    userState[from] = {
+
+        action:
+            "preguntar_actualizar",
+
         cedula
+
     };
 
-    await sock.sendMessage(from,{
+
+    // ===================================================
+    // LIBERAR ESTADO DESPUÉS DE 1 MINUTO
+    // ===================================================
+
+    setTimeout(() => {
+
+        if (
+            userState[from]?.action ===
+                "preguntar_actualizar" &&
+
+            userState[from]?.cedula === cedula
+        ) {
+
+            delete userState[from];
+
+            console.log(
+                `⏱️ Estado de actualización expirado: ${from}`
+            );
+
+        }
+
+    }, 60 * 1000);
+
+
+    // ===================================================
+    // CONFIRMACIÓN AL USUARIO
+    // ===================================================
+
+    await sock.sendMessage(from, {
         text:
-`✅ Asignación registrada correctamente.
+`✅ *Asignación registrada correctamente.*
 
 ¿Desea actualizar datos?
 
@@ -945,7 +1181,24 @@ await guardarAsignacion({
 *N* = No`
     });
 
+
     return;
+}
+// ===================================================
+// NUEVA CÉDULA DURANTE "PREGUNTAR ACTUALIZAR"
+// ===================================================
+
+if (
+    userState[from]?.action === "preguntar_actualizar" &&
+    /^\d+$/.test(cleanText)
+) {
+
+    console.log(
+        "🔄 Nueva C.I. detectada. Cerrando actualización anterior."
+    );
+
+    delete userState[from];
+
 }
 
 
@@ -1151,63 +1404,68 @@ if (/^\d+$/.test(cleanText)) {
 
 
 
-        const plantilla =
+        // ===================================================
+        // MENSAJE 1 — DATOS PRINCIPALES + LISTA
+        // ===================================================
+
+        const plantillaPadron =
 `🇵🇾 *PADRÓN ELECTORAL*
 
+🆔 C.I.: ${ciudadano.CEDULA}
 👤 *${ciudadano.NOMBRE} ${ciudadano.APELLIDO}*
 
-🆔 *C.I.*
-${ciudadano.CEDULA}
+📍 Departamento: ${ciudadano.departamento || "-"}
+🏙️ Distrito: ${ciudadano.distrito || "-"}
+🏫 Local: ${ciudadano.local || "-"}
 
-🎂 *Fecha nacimiento*
-${fechaNac}
+🪑 Mesa: ${ciudadano.MESA || "-"}
+🔢 Orden: ${ciudadano.ORDEN || "-"}
 
-🎯 *Edad*
-${ciudadano.EDAD || "-"}
-
-🚻 *Sexo*
-${genero}
-
-🪑 *Mesa*
-${ciudadano.MESA || "-"}
-
-🔢 *Orden*
-${ciudadano.ORDEN || "-"}
-
-🗳️ *Estado voto*
-${ciudadano.DES_VOTO || "-"}
-
-🌱 *Indígena*
-${esIndigen}
-
-━━━━━━━━━━━━━━
-
-📍 *Departamento*
-${ciudadano.departamento || "-"}
-
-🏙️ *Distrito*
-${ciudadano.distrito || "-"}
-
-🏫 *Local de votación*
-${ciudadano.local || "-"}
-
-━━━━━━━━━━━━━━
-
-📊 Total en tu lista: ${totalLista}
-
-${modo === "ACTUALIZACION"
-?
-"¿Desea guardar esta asignación?\n\nResponda *S* o *N*."
-:
-""}`;
+╔════════════════╗
+        🇵🇾 *LISTA 1* ☝🏻
+        🚩 *OPCIÓN 4*
+╚════════════════╝`;
 
 
+        // ===================================================
+        // MENSAJE 2 — RESULTADOS
+        // ===================================================
+
+        let plantillaResultados =
+`📌 *RESULTADOS*
+
+🗳️ Estado voto: ${ciudadano.DES_VOTO || "-"}
+🌱 Indígena: ${esIndigen}
+
+🎂 Fecha nacimiento: ${fechaNac}
+🎯 Edad: ${ciudadano.EDAD || "-"}
+🚻 Sexo: ${genero}
+
+📊 Total en tu lista: ${totalLista}`;
 
 
+        // ===================================================
+        // PREGUNTA PARA GUARDAR
+        // ===================================================
 
+        if (modo === "ACTUALIZACION") {
+
+            plantillaResultados +=
+`
+
+💾 ¿Desea guardar este registro en su lista?
+
+*S* = Sí
+*N* = No`;
+
+        }
+
+
+        // ===================================================
+        // GUARDAR ESTADO PARA RESPONDER S / N
+        // ===================================================
 
         if(modo === "ACTUALIZACION"){
-
 
             userState[from] = {
 
@@ -1215,41 +1473,31 @@ ${modo === "ACTUALIZACION"
 
                 cedula: ciudadano.CEDULA,
 
-
                 datos: {
 
                     nombre:
                     ciudadano.NOMBRE,
 
-
                     apellido:
                     ciudadano.APELLIDO,
-
 
                     local:
                     ciudadano.local,
 
-
                     mesa:
                     ciudadano.MESA || null,
-
 
                     orden:
                     ciudadano.ORDEN || null,
 
-
                     celular:
                     ciudadano.CELULAR || null,
-
-
 
                     depart:
                     ciudadano.DEPART,
 
-
                     distrito:
                     ciudadano.DISTRITO,
-
 
                     zona:
                     ciudadano.ZONA
@@ -1258,18 +1506,25 @@ ${modo === "ACTUALIZACION"
 
             };
 
-
         }
 
 
-
-
+        // ===================================================
+        // ENVIAR MENSAJE 1
+        // ===================================================
 
         await sock.sendMessage(from, {
-            text: plantilla
+            text: plantillaPadron
         });
 
 
+        // ===================================================
+        // ENVIAR MENSAJE 2
+        // ===================================================
+
+        await sock.sendMessage(from, {
+            text: plantillaResultados
+        });
 
 
 
@@ -1294,10 +1549,6 @@ ${modo === "ACTUALIZACION"
     return;
 
 }
-
-
-
-
 
 
 

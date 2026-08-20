@@ -3,6 +3,7 @@ import { db } from "../database/mysql.js";
 
 // =====================================================
 // BUSQUEDA FULLTEXT POR NOMBRE
+// UNA SOLA PERSONA POR C.I.
 // =====================================================
 
 export async function buscarPorNombre(
@@ -33,8 +34,6 @@ export async function buscarPorNombre(
 
         // ---------------------------------------------
         // Construir búsqueda FULLTEXT
-        // ejemplo:
-        // +JUAN +MARCELO +FRANCO
         // ---------------------------------------------
 
         const criterioBusqueda = palabras
@@ -42,6 +41,9 @@ export async function buscarPorNombre(
             .join(" ");
 
 
+        // ---------------------------------------------
+        // CONSULTA
+        // ---------------------------------------------
 
         let query = `
 
@@ -49,21 +51,21 @@ SELECT
 
     CEDULA,
 
-    NOMBRE,
+    MAX(NOMBRE) AS NOMBRE,
 
-    APELLIDO,
+    MAX(APELLIDO) AS APELLIDO,
 
-    DEPART,
+    MAX(DEPART) AS DEPART,
 
-    DISTRITO,
+    MAX(DISTRITO) AS DISTRITO,
 
-    DEPARTAMENTO,
+    MAX(DEPARTAMENTO) AS DEPARTAMENTO,
 
-    DISTRITO_NOMBRE,
+    MAX(DISTRITO_NOMBRE) AS DISTRITO_NOMBRE,
 
-    ZONA,
+    MAX(ZONA) AS ZONA,
 
-    LOCAL
+    MAX(LOCAL) AS LOCAL
 
 FROM regciv_busqueda
 
@@ -72,9 +74,7 @@ WHERE 1=1
 `;
 
 
-
         const params = [];
-
 
 
         // ---------------------------------------------
@@ -92,7 +92,6 @@ AND DEPART = ?
         }
 
 
-
         // ---------------------------------------------
         // FILTRO POR DISTRITO
         // ---------------------------------------------
@@ -108,21 +107,23 @@ AND DISTRITO = ?
         }
 
 
-
         // ---------------------------------------------
         // FULLTEXT
         // ---------------------------------------------
 
         query += `
-AND
-MATCH(BUSQUEDA)
+AND MATCH(BUSQUEDA)
 AGAINST(? IN BOOLEAN MODE)
 
-LIMIT 5
+GROUP BY CEDULA
+
+ORDER BY CEDULA
+
+LIMIT 10
 `;
 
-        params.push(criterioBusqueda);
 
+        params.push(criterioBusqueda);
 
 
         console.log("🔎 BUSQUEDA FULLTEXT");
@@ -130,21 +131,27 @@ LIMIT 5
         console.log(params);
 
 
-
         const inicio = Date.now();
+
 
         const [rows] = await db.execute(
             query,
             params
         );
 
+
         console.log(
             `⚡ FULLTEXT: ${Date.now() - inicio} ms`
         );
 
 
+        console.log(
+            `👥 PERSONAS ENCONTRADAS: ${rows.length}`
+        );
+
 
         return rows;
+
 
     } catch (error) {
 

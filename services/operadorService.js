@@ -1,5 +1,35 @@
 import { db } from "../database/mysql.js";
 
+// =====================================
+// VALIDAR OPERADOR
+// =====================================
+
+export async function validarOperador(telefono){
+
+    const [rows] = await db.execute(
+        `
+        SELECT
+            id,
+            telefono,
+            nombre,
+            activo,
+            candidato_id
+        FROM operadores
+        WHERE telefono = ?
+          AND activo = 1
+        LIMIT 1
+        `,
+        [
+            telefono
+        ]
+    );
+
+    return rows.length > 0
+        ? rows[0]
+        : null;
+
+}
+
 
 // =====================================
 // ALTA OPERADOR
@@ -40,7 +70,7 @@ export async function altaOperador(
             nombre,
             activo
         )
-        VALUES (?,?, 'S')
+        VALUES (?, ?, 1)
         `,
         [
             telefono,
@@ -50,38 +80,6 @@ export async function altaOperador(
 
 
     return true;
-
-}
-
-
-// =====================================
-// VALIDAR OPERADOR
-// =====================================
-
-export async function validarOperador(telefono){
-
-    const [rows] = await db.execute(
-        `
-        SELECT
-            id,
-            telefono,
-            nombre,
-            activo,
-            candidato_id
-        FROM operadores
-        WHERE telefono = ?
-        AND activo = 1
-        LIMIT 1
-        `,
-        [
-            telefono
-        ]
-    );
-
-
-    return rows.length > 0
-        ? rows[0]
-        : null;
 
 }
 

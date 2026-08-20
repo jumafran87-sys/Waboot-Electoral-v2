@@ -1,151 +1,543 @@
 import { db } from "../database/mysql.js";
 
 
-// ======================================
+// =====================================================
 // REPORTE GENERAL ADMIN
-// ======================================
+// =====================================================
 
 export async function obtenerReporteGeneral() {
 
     const [[reporte]] = await db.execute(
-
         `
         SELECT
 
-            COUNT(*) total,
+            COUNT(*) AS total,
 
-            SUM(voto='S') votos,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN voto = 'S' THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS votos,
 
-            SUM(celunew IS NOT NULL 
-                AND celunew<>'') celulares,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN celunew IS NOT NULL
+                        AND celunew <> ''
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS celulares,
 
-            SUM(ubi IS NOT NULL 
-                AND ubi<>'') ubicaciones,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN ubi IS NOT NULL
+                        AND ubi <> ''
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS ubicaciones,
 
-            SUM(observacion IS NOT NULL 
-                AND observacion<>'') observaciones
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN observacion IS NOT NULL
+                        AND observacion <> ''
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS observaciones
 
         FROM asignaciones
         `
-
     );
 
-
-    return reporte;
-
+    return reporte || {
+        total: 0,
+        votos: 0,
+        celulares: 0,
+        ubicaciones: 0,
+        observaciones: 0
+    };
 }
 
 
 
-// ======================================
+// =====================================================
 // REPORTE CANDIDATO
-// ======================================
+// =====================================================
 
 export async function obtenerReporteCandidato(
     candidato_id
 ) {
 
     const [[reporte]] = await db.execute(
-
         `
         SELECT
 
-            COUNT(*) total,
+            COUNT(*) AS total,
 
-            SUM(a.voto='S') votos,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.voto = 'S' THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS votos,
 
-            SUM(a.celunew IS NOT NULL 
-                AND a.celunew<>'') celulares,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.celunew IS NOT NULL
+                        AND a.celunew <> ''
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS celulares,
 
-            SUM(a.ubi IS NOT NULL 
-                AND a.ubi<>'') ubicaciones,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.ubi IS NOT NULL
+                        AND a.ubi <> ''
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS ubicaciones,
 
-            SUM(a.observacion IS NOT NULL 
-                AND a.observacion<>'') observaciones
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.observacion IS NOT NULL
+                        AND a.observacion <> ''
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS observaciones
 
         FROM asignaciones a
 
-        INNER JOIN candidatos c
-        ON c.id = a.candidato_id
-
-        WHERE a.candidato_id=?
-
-        AND a.ciudad = c.ciudad
-
+        WHERE a.candidato_id = ?
         `,
-
         [
             candidato_id
         ]
-
     );
 
-    return reporte;
-
+    return reporte || {
+        total: 0,
+        votos: 0,
+        celulares: 0,
+        ubicaciones: 0,
+        observaciones: 0
+    };
 }
 
 
 
-// ======================================
+// =====================================================
 // REPORTE OPERADOR
-// ======================================
+// =====================================================
 
 export async function obtenerReporteOperador(
     telefono
 ) {
 
-
     const [[reporte]] = await db.execute(
-
         `
         SELECT
 
-            COUNT(*) total,
+            COUNT(*) AS total,
 
-            SUM(voto='S') votos
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN voto = 'S' THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS votos
 
         FROM asignaciones
 
-        WHERE operador_telefono=?
-
+        WHERE operador_telefono = ?
         `,
-
         [
             telefono
         ]
+    );
 
+    return reporte || {
+        total: 0,
+        votos: 0
+    };
+}
+
+
+
+// =====================================================
+// LISTAR ASIGNACIONES
+//
+// telefono:
+//   Si viene informado → solamente ese operador.
+//
+// filtro:
+//   voto
+//   pendientes
+//
+// candidato_id:
+//   Si viene informado → solamente ese candidato.
+//
+// Ejemplos:
+//
+// obtenerListadoAsignaciones(
+//     telefono,
+//     null
+// )
+//
+// obtenerListadoAsignaciones(
+//     null,
+//     null,
+//     candidato_id
+// )
+// =====================================================
+
+export async function obtenerListadoAsignaciones(
+    telefono = null,
+    filtro = null,
+    candidato_id = null
+) {
+
+    let query = `
+        SELECT
+
+            a.id,
+
+            a.operador_telefono,
+
+            o.nombre AS operador_nombre,
+
+            a.candidato_id,
+
+            a.cedula,
+
+            a.nombre,
+
+            a.apellido,
+
+            a.local,
+
+            a.mesa,
+
+            a.orden,
+
+            a.celular,
+
+            a.celunew,
+
+            a.ubi,
+
+            a.observacion,
+
+            a.voto,
+
+            a.fechahora
+
+        FROM asignaciones a
+
+        LEFT JOIN operadores o
+            ON o.telefono = a.operador_telefono
+
+        WHERE 1 = 1
+    `;
+
+
+    const params = [];
+
+
+
+    // =================================================
+    // FILTRO OPERADOR
+    // =================================================
+
+    if (telefono) {
+
+        query += `
+            AND a.operador_telefono = ?
+        `;
+
+        params.push(telefono);
+    }
+
+
+
+    // =================================================
+    // FILTRO CANDIDATO
+    // =================================================
+
+    if (candidato_id) {
+
+        query += `
+            AND a.candidato_id = ?
+        `;
+
+        params.push(candidato_id);
+    }
+
+
+
+    // =================================================
+    // FILTRO VOTOS
+    // =================================================
+
+    if (filtro === "voto") {
+
+        query += `
+            AND a.voto = 'S'
+        `;
+    }
+
+
+
+    // =================================================
+    // FILTRO PENDIENTES
+    // =================================================
+
+    if (filtro === "pendientes") {
+
+        query += `
+            AND (
+                a.voto IS NULL
+                OR a.voto <> 'S'
+            )
+        `;
+    }
+
+
+
+    // =================================================
+    // ORDEN
+    // =================================================
+
+    query += `
+        ORDER BY a.fechahora DESC
+    `;
+
+
+
+    const [rows] = await db.execute(
+        query,
+        params
     );
 
 
-    return reporte;
-
+    return rows;
 }
 
-// ======================================
-// BUSCAR CANDIDATO
-// ======================================
 
-export async function buscarCandidato(texto) {
+
+// =====================================================
+// LISTAR OPERADORES
+//
+// Este reporte muestra todos los operadores.
+//
+// No mezcla las asignaciones por error.
+//
+// =====================================================
+
+export async function obtenerReporteOperadores() {
 
     const [rows] = await db.execute(
-
         `
         SELECT
+
+            o.telefono,
+
+            o.nombre,
+
+            o.activo,
+
+            o.candidato_id,
+
+            COUNT(a.id) AS total,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.voto = 'S'
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS votos
+
+        FROM operadores o
+
+        LEFT JOIN asignaciones a
+            ON a.operador_telefono = o.telefono
+
+        GROUP BY
+
+            o.id,
+            o.telefono,
+            o.nombre,
+            o.activo,
+            o.candidato_id
+
+        ORDER BY
+            o.nombre ASC
+        `
+    );
+
+
+    return rows;
+}
+
+
+
+/// =====================================================
+// OPERADORES DE UN CANDIDATO
+//
+// Devuelve:
+// nombre operador
+// teléfono
+// últimos 3 dígitos
+// cantidad de asignaciones
+// cantidad de votos
+//
+// Si el teléfono corresponde al candidato que está
+// consultando, se identifica como CARGA DIRECTA.
+// =====================================================
+
+export async function obtenerOperadoresCandidato(
+    candidato_id,
+    telefonoCandidato = null
+) {
+
+    let query = `
+        SELECT
+
+            a.operador_telefono,
+
+            CASE
+                WHEN ? IS NOT NULL
+                AND a.operador_telefono = ?
+                THEN 'CARGA DIRECTA'
+                ELSE COALESCE(
+                    o.nombre,
+                    'SIN NOMBRE'
+                )
+            END AS operador_nombre,
+
+            COUNT(DISTINCT a.cedula) AS total,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.voto = 'S'
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS votos
+
+        FROM asignaciones a
+
+        LEFT JOIN operadores o
+            ON o.telefono = a.operador_telefono
+
+        WHERE a.candidato_id = ?
+
+        GROUP BY
+            a.operador_telefono,
+            o.nombre
+
+        ORDER BY
+            total DESC
+    `;
+
+
+    const [rows] = await db.execute(
+        query,
+        [
+            telefonoCandidato,
+            telefonoCandidato,
+            candidato_id
+        ]
+    );
+
+
+    return rows;
+}
+
+
+
+// =====================================================
+// BUSCAR CANDIDATO
+// =====================================================
+
+export async function buscarCandidato(
+    texto
+) {
+
+    const [rows] = await db.execute(
+        `
+        SELECT
+
             id,
+
             nombre,
+
             apellido,
+
             cargo,
+
             ciudad
 
         FROM candidatos
 
         WHERE
+
             UPPER(nombre) LIKE UPPER(?)
+
             OR UPPER(apellido) LIKE UPPER(?)
+
             OR UPPER(ciudad) LIKE UPPER(?)
 
+            OR UPPER(
+                CONCAT(
+                    nombre,
+                    ' ',
+                    apellido
+                )
+            ) LIKE UPPER(?)
+
         ORDER BY
+
             nombre,
+
             apellido
 
         LIMIT 10
@@ -154,12 +546,11 @@ export async function buscarCandidato(texto) {
         [
             `%${texto}%`,
             `%${texto}%`,
+            `%${texto}%`,
             `%${texto}%`
         ]
-
     );
 
+
     return rows;
-
 }
-
