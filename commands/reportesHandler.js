@@ -40,6 +40,16 @@ export async function manejarReportes(
         return false;
     }
 
+// =====================================================
+// LISTAR PDF
+// Este comando pertenece a listarHandler.js
+// =====================================================
+
+if (cleanLower === "listar pdf") {
+
+    return false;
+}
+
 
     const partes = cleanLower.split(" ");
 

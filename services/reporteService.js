@@ -208,18 +208,25 @@ export async function obtenerReporteOperador(
 // candidato_id:
 //   Si viene informado → solamente ese candidato.
 //
-// Ejemplos:
+// Además devuelve:
 //
-// obtenerListadoAsignaciones(
-//     telefono,
-//     null
-// )
+//   - datos de la asignación
+//   - datos del operador
+//   - datos del candidato
+//   - datos del intendente
 //
-// obtenerListadoAsignaciones(
-//     null,
-//     null,
-//     candidato_id
-// )
+// REGLA:
+//
+// Si el candidato es INTENDENTE:
+//
+//     el propio candidato es el intendente.
+//
+// Si el candidato es CONCEJAL:
+//
+//     se utiliza candidatos.intendente_id.
+//
+// El intendente NO tiene opción.
+// La opción corresponde solamente al candidato concejal.
 // =====================================================
 
 export async function obtenerListadoAsignaciones(
@@ -229,7 +236,12 @@ export async function obtenerListadoAsignaciones(
 ) {
 
     let query = `
+
         SELECT
+
+            -- =========================================
+            -- ASIGNACIÓN
+            -- =========================================
 
             a.id,
 
@@ -261,19 +273,121 @@ export async function obtenerListadoAsignaciones(
 
             a.voto,
 
-            a.fechahora
+            a.fechahora,
+
+
+            -- =========================================
+            -- CANDIDATO
+            -- =========================================
+
+            c.id AS candidato_id_real,
+
+            c.nombre AS candidato_nombre,
+
+            c.apellido AS candidato_apellido,
+
+            c.cargo AS candidato_cargo,
+
+            c.ciudad AS candidato_ciudad,
+
+            c.departamento AS candidato_departamento,
+
+            c.distrito AS candidato_distrito,
+
+            c.lista_numero AS candidato_lista_numero,
+
+            c.lista_nombre AS candidato_lista_nombre,
+
+            c.opcion AS candidato_opcion,
+
+            c.intendente_id,
+
+
+            -- =========================================
+            -- INTENDENTE
+            -- =========================================
+
+            i.id AS intendente_id_real,
+
+            i.nombre AS intendente_nombre,
+
+            i.apellido AS intendente_apellido,
+
+            i.cargo AS intendente_cargo,
+
+            i.ciudad AS intendente_ciudad,
+
+            i.departamento AS intendente_departamento,
+
+            i.distrito AS intendente_distrito,
+
+            i.lista_numero AS intendente_lista_numero,
+
+            i.lista_nombre AS intendente_lista_nombre
 
         FROM asignaciones a
 
+
+        -- =========================================
+        -- OPERADOR
+        -- =========================================
+
         LEFT JOIN operadores o
-            ON o.telefono = a.operador_telefono
+
+            ON o.telefono =
+               a.operador_telefono
+
+
+        -- =========================================
+        -- CANDIDATO
+        -- =========================================
+
+        LEFT JOIN candidatos c
+
+            ON c.id =
+               a.candidato_id
+
+
+        -- =========================================
+        -- INTENDENTE
+        --
+        -- Si candidato = INTENDENTE
+        --
+        --     c.id
+        --
+        -- Si candidato = CONCEJAL
+        --
+        --     c.intendente_id
+        -- =========================================
+
+        LEFT JOIN candidatos i
+
+            ON i.id =
+
+                CASE
+
+                    WHEN UPPER(
+                        TRIM(
+                            COALESCE(
+                                c.cargo,
+                                ''
+                            )
+                        )
+                    ) = 'INTENDENTE'
+
+                    THEN c.id
+
+                    ELSE c.intendente_id
+
+                END
+
 
         WHERE 1 = 1
+
     `;
 
 
     const params = [];
-
 
 
     // =================================================
@@ -283,12 +397,15 @@ export async function obtenerListadoAsignaciones(
     if (telefono) {
 
         query += `
+
             AND a.operador_telefono = ?
+
         `;
 
-        params.push(telefono);
+        params.push(
+            telefono
+        );
     }
-
 
 
     // =================================================
@@ -298,25 +415,29 @@ export async function obtenerListadoAsignaciones(
     if (candidato_id) {
 
         query += `
+
             AND a.candidato_id = ?
+
         `;
 
-        params.push(candidato_id);
+        params.push(
+            candidato_id
+        );
     }
 
 
-
     // =================================================
-    // FILTRO VOTOS
+    // FILTRO VOTO
     // =================================================
 
     if (filtro === "voto") {
 
         query += `
+
             AND a.voto = 'S'
+
         `;
     }
-
 
 
     // =================================================
@@ -326,13 +447,14 @@ export async function obtenerListadoAsignaciones(
     if (filtro === "pendientes") {
 
         query += `
+
             AND (
                 a.voto IS NULL
                 OR a.voto <> 'S'
             )
+
         `;
     }
-
 
 
     // =================================================
@@ -340,15 +462,22 @@ export async function obtenerListadoAsignaciones(
     // =================================================
 
     query += `
-        ORDER BY a.fechahora DESC
+
+        ORDER BY
+            a.fechahora DESC
+
     `;
 
 
+    // =================================================
+    // EJECUTAR
+    // =================================================
 
-    const [rows] = await db.execute(
-        query,
-        params
-    );
+    const [rows] =
+        await db.execute(
+            query,
+            params
+        );
 
 
     return rows;

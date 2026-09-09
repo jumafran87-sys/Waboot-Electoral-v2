@@ -52,6 +52,10 @@ import {
 } from "./reportesHandler.js";
 
 import {
+    manejarListar
+} from "../services/listarHandler.js";
+
+import {
     obtenerRol
 } from "../services/permisoService.js";
 
@@ -175,7 +179,22 @@ if(reporte){
     return;
 }
 
+// ================================
+// MODULO LISTAR
+// ================================
 
+const listado =
+await manejarListar(
+    sock,
+    from,
+    cleanLower,
+    usuario,
+    telefono
+);
+
+if (listado) {
+    return;
+}
 
   // ===================================================
   // RESTART
@@ -1423,7 +1442,6 @@ if (/^\d+$/.test(cleanText)) {
 
 ╔════════════════╗
         🇵🇾 *LISTA 1* ☝🏻
-        🚩 *OPCIÓN 4*
 ╚════════════════╝`;
 
 

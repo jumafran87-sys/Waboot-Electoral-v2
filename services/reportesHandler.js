@@ -1,40 +1,45 @@
 import {
     obtenerReporteGeneral,
-    obtenerReporteCandidato,
-    buscarCandidato
+    obtenerReporteCandidato
 } from "../services/reporteService.js";
 
+
+// =====================================================
+// MANEJAR REPORTES
+// =====================================================
 
 export async function manejarReportes(
     sock,
     from,
     cleanLower,
     usuario
-){
+) {
 
-  if(!cleanLower.startsWith("reporte")){
-    return false;
-}
+    // =====================================================
+    // SOLO MANEJA COMANDOS QUE COMIENZAN CON "reporte"
+    // =====================================================
 
+    if (!cleanLower.startsWith("reporte")) {
+        return false;
+    }
+
+
+    // =====================================================
+    // DATOS
+    // =====================================================
 
     let datos;
 
 
-datos = await obtenerReporteGeneral();
-
-const partes = cleanLower.split(" ");
-
-const busqueda = partes.slice(1).join(" ").trim();
-    // ======================
+    // =====================================================
     // ADMIN
-    // ======================
+    // =====================================================
 
-    if(usuario.rol === "ADMIN"){
+    if (usuario.rol === "ADMIN") {
 
-    
+        datos = await obtenerReporteGeneral();
 
-
-        await sock.sendMessage(from,{
+        await sock.sendMessage(from, {
             text:
 `📊 REPORTE GENERAL
 
@@ -54,24 +59,21 @@ ${datos.ubicaciones || 0}
 ${datos.observaciones || 0}`
         });
 
-
         return true;
     }
 
 
-
-    // ======================
+    // =====================================================
     // CANDIDATO
-    // ======================
+    // =====================================================
 
-    if(usuario.rol === "CANDIDATO"){
+    if (usuario.rol === "CANDIDATO") {
 
         datos = await obtenerReporteCandidato(
             usuario.candidato_id
         );
 
-
-        await sock.sendMessage(from,{
+        await sock.sendMessage(from, {
             text:
 `📊 REPORTE CANDIDATO
 
@@ -92,22 +94,20 @@ ${datos.celulares || 0}
 ${datos.ubicaciones || 0}`
         });
 
-
         return true;
     }
 
 
-
+    // =====================================================
     // OPERADOR
+    // =====================================================
 
-    await sock.sendMessage(from,{
+    await sock.sendMessage(from, {
         text:
 `📋 Tus registros están disponibles con:
 
 misregistros`
     });
 
-
     return true;
-
 }

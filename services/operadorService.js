@@ -175,16 +175,33 @@ export async function asignarCandidatoOperador(
 
 }
 
-
-
-
 // =====================================
-// OBTENER OPERADOR CON CANDIDATO
+// OBTENER OPERADOR POR NÚMERO DE LISTADO
+// =====================================
+//
+// El número corresponde a la posición
+// que aparece en "LISTADO DE OPERADORES".
+//
+// Ejemplo:
+//
+// 1️⃣ ---582
+// 2️⃣ .--331
+//
+// listar pdf 1
+// → obtiene el operador de la posición 1
+//
 // =====================================
 
-export async function obtenerOperador(
-    telefono
-){
+export async function obtenerOperadorPorNumero(numero) {
+
+    const numeroInt = Number(numero);
+
+    if (
+        !Number.isInteger(numeroInt) ||
+        numeroInt < 1
+    ) {
+        return null;
+    }
 
     const [rows] = await db.execute(
         `
@@ -193,29 +210,17 @@ export async function obtenerOperador(
             o.telefono,
             o.nombre,
             o.activo,
-            o.candidato_id,
-
-            c.nombre AS candidato_nombre,
-            c.apellido AS candidato_apellido,
-            c.ciudad AS candidato_ciudad
-
+            o.candidato_id
         FROM operadores o
-
-        LEFT JOIN candidatos c
-        ON c.id = o.candidato_id
-
-        WHERE o.telefono = ?
-
-        LIMIT 1
+        ORDER BY o.nombre ASC
+        LIMIT 1 OFFSET ?
         `,
         [
-            telefono
+            numeroInt - 1
         ]
     );
-
 
     return rows.length > 0
         ? rows[0]
         : null;
-
 }

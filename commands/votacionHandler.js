@@ -164,41 +164,34 @@ export async function manejarVotacion(
                 );
 
 
-            // ===================================================
-            // YA VOTO
-            // ===================================================
+ // ===================================================
+// YA VOTÓ
+// ===================================================
 
-            if (votoRegistrado.length > 0) {
+if (votoRegistrado.length > 0) {
 
-                const registro =
-                    votoRegistrado[0];
+    const registro = votoRegistrado[0];
 
+    await sock.sendMessage(from, {
+        text:
+            "🗳️ YA VOTÓ\n\n" +
 
-                await sock.sendMessage(from, {
-                    text:
-                        "PERSONA YA REGISTRADA COMO VOTANTE\n\n" +
+            ciudadano.NOMBRE + " " +
+            ciudadano.APELLIDO + "\n" +
 
-                        ciudadano.NOMBRE + " " +
-                        ciudadano.APELLIDO + "\n\n" +
+            "C.I. " + ciudadano.CEDULA + "\n\n" +
 
-                        "C.I.\n" +
-                        ciudadano.CEDULA + "\n\n" +
+            "✓ Voto registrado\n" +
+            "📅 " +
+            new Date(registro.voto_fecha)
+                .toLocaleString("es-PY") + "\n\n" +
 
-                        "Voto registrado\n\n" +
+            "Operador: " +
+            registro.voto_operador
+    });
 
-                        "Fecha:\n" +
-                        new Date(
-                            registro.voto_fecha
-                        ).toLocaleString("es-PY") +
-
-                        "\n\nOperador:\n" +
-                        registro.voto_operador
-                });
-
-
-                return true;
-            }
-
+    return true;
+}
 
             // ===================================================
             // PERSONA DEL MISMO MUNICIPIO
@@ -221,25 +214,25 @@ export async function manejarVotacion(
             };
 
 
-            await sock.sendMessage(from, {
-                text:
-                    "CONTROL DE VOTACION\n\n" +
+       await sock.sendMessage(from, {
+    text:
+        "🗳️ *CONTROL DE VOTACIÓN*\n\n" +
 
-                    ciudadano.NOMBRE + " " +
-                    ciudadano.APELLIDO + "\n\n" +
+        "👤 " +
+        ciudadano.NOMBRE + " " +
+        ciudadano.APELLIDO + "\n" +
 
-                    "C.I.\n" +
-                    ciudadano.CEDULA + "\n\n" +
+        "C.I. " +
+        ciudadano.CEDULA + "\n\n" +
 
-                    "Local:\n" +
-                    (ciudadano.local || "-") +
+        "📍 " +
+        (ciudadano.local || "-") + "\n\n" +
 
-                    "\n\n" +
-                    "La persona ya voto?\n\n" +
+        "¿La persona ya votó?\n\n" +
 
-                    "S = Si\n" +
-                    "N = No"
-            });
+        "• *S* — Sí\n" +
+        "• *N* — No"
+});
 
 
             return true;
