@@ -1423,42 +1423,37 @@ if (/^\d+$/.test(cleanText)) {
 
 
 
-        // ===================================================
-        // MENSAJE 1 — DATOS PRINCIPALES + LISTA
-        // ===================================================
+// ===================================================
+// MENSAJE 1 — DATOS PRINCIPALES + LISTA
+// ===================================================
 
-        const plantillaPadron =
+const plantillaPadron =
 `🇵🇾 *PADRÓN ELECTORAL*
 
 🆔 C.I.: ${ciudadano.CEDULA}
 👤 *${ciudadano.NOMBRE} ${ciudadano.APELLIDO}*
-
 📍 Departamento: ${ciudadano.departamento || "-"}
 🏙️ Distrito: ${ciudadano.distrito || "-"}
 🏫 Local: ${ciudadano.local || "-"}
-
-🪑 Mesa: ${ciudadano.MESA || "-"}
-🔢 Orden: ${ciudadano.ORDEN || "-"}
+🏛️ Seccional: ${ciudadano.SECCIONAL || "-"}
+🪑 Mesa: ${ciudadano.MESA || "-"}  🔢 Orden: ${ciudadano.ORDEN || "-"}
 
 ╔════════════════╗
-        🇵🇾 *LISTA 1* ☝🏻
+     🇵🇾 *LISTA 1* ☝🏻
 ╚════════════════╝`;
 
 
-        // ===================================================
-        // MENSAJE 2 — RESULTADOS
-        // ===================================================
+// ===================================================
+// MENSAJE 2 — RESULTADOS
+// ===================================================
 
-        let plantillaResultados =
+let plantillaResultados =
 `📌 *RESULTADOS*
 
-🗳️ Estado voto: ${ciudadano.DES_VOTO || "-"}
-🌱 Indígena: ${esIndigen}
-
-🎂 Fecha nacimiento: ${fechaNac}
-🎯 Edad: ${ciudadano.EDAD || "-"}
-🚻 Sexo: ${genero}
-
+🗳️ Estado voto: ${ciudadano.DES_VOTO || "-"}  🌱 Indígena: ${esIndigen}
+🎂 Nacimiento: ${fechaNac}  🎯 Edad: ${ciudadano.EDAD || "-"}  🚻 Sexo: ${genero}
+🏛️ Partido: ${ciudadano.PARTIDO || "-"}  🔢 N° Partido: ${ciudadano.N_PARTIDO || "-"}
+⭐ *VOTO ÚLTIMA ELECCIÓN INTERNA: ${ciudadano.VOTO5 || "-"}*
 📊 Total en tu lista: ${totalLista}`;
 
 

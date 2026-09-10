@@ -71,58 +71,59 @@ nombreTablaPadron
 
         const query = `
 
-       SELECT
+SELECT
 
-r.CEDULA,
-r.NOMBRE,
-r.APELLIDO,
+    r.CEDULA,
+    r.NOMBRE,
+    r.APELLIDO,
 
-r.FEC_NAC,
-r.EDAD,
-r.SEXO,
+    r.FEC_NAC,
+    r.EDAD,
+    r.SEXO,
 
-r.MESA,
-r.ORDEN,
+    r.MESA,
+    r.ORDEN,
 
-r.DES_VOTO,
-r.ES_INDIGEN,
+    r.DES_VOTO,
+    r.ES_INDIGEN,
 
-r.DEPART,
-r.DISTRITO,
-r.ZONA,
-r.LOCAL,
+    r.PARTIDO,
+    r.N_PARTIDO,
+    r.SECCIONAL,
 
+    r.VOTO1,
+    r.VOTO2,
+    r.VOTO3,
+    r.VOTO4,
+    r.VOTO5,
 
-            d.DESCRIP AS departamento,
+    r.DEPART,
+    r.DISTRITO,
+    r.ZONA,
+    r.LOCAL,
 
-            di.DESCRIP AS distrito,
+    d.DESCRIP AS departamento,
+    di.DESCRIP AS distrito,
+    l.DESCRIP AS local
 
-            l.DESCRIP AS local
+FROM ${nombreTablaPadron} r
 
+LEFT JOIN dep d
+    ON d.DEPART = r.DEPART
 
-        FROM ${nombreTablaPadron} r
+LEFT JOIN dis di
+    ON di.DEPART = r.DEPART
+    AND di.DISTRITO = r.DISTRITO
 
+LEFT JOIN loc l
+    ON l.DPTO = r.DEPART
+    AND l.DISTRITO = r.DISTRITO
+    AND l.ZONA = r.ZONA
+    AND l.LOCAL = r.LOCAL
 
-        LEFT JOIN dep d
-            ON d.DEPART = r.DEPART
+WHERE r.CEDULA = ?
 
-
-        LEFT JOIN dis di
-            ON di.DEPART = r.DEPART
-            AND di.DISTRITO = r.DISTRITO
-
-
-        LEFT JOIN loc l
-            ON l.DPTO = r.DEPART
-            AND l.DISTRITO = r.DISTRITO
-            AND l.ZONA = r.ZONA
-            AND l.LOCAL = r.LOCAL
-
-
-        WHERE r.CEDULA = ?
-
-
-        LIMIT 1
+LIMIT 1
 
         `;
 
