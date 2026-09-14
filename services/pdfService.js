@@ -1128,7 +1128,7 @@ export async function generarPdfAsignaciones(
     // PIE DE PÁGINA
     // =================================================
 
-    function dibujarPiePagina() {
+  function dibujarPiePagina() {
 
     doc.save();
 
@@ -1150,7 +1150,6 @@ export async function generarPdfAsignaciones(
 
     doc.restore();
 }
-
 
     // =================================================
     // PRIMERA PÁGINA
