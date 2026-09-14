@@ -214,19 +214,12 @@ export async function obtenerReporteOperador(
 //   - datos del operador
 //   - datos del candidato
 //   - datos del intendente
+//   - datos del padrón general
+//   - seccional
+//   - partido
+//   - número de partido
+//   - voto de la interna pasada
 //
-// REGLA:
-//
-// Si el candidato es INTENDENTE:
-//
-//     el propio candidato es el intendente.
-//
-// Si el candidato es CONCEJAL:
-//
-//     se utiliza candidatos.intendente_id.
-//
-// El intendente NO tiene opción.
-// La opción corresponde solamente al candidato concejal.
 // =====================================================
 
 export async function obtenerListadoAsignaciones(
@@ -274,6 +267,19 @@ export async function obtenerListadoAsignaciones(
             a.voto,
 
             a.fechahora,
+
+
+            -- =========================================
+            -- PADRÓN GENERAL
+            -- =========================================
+
+            p.SECCIONAL AS seccional,
+
+            p.PARTIDO AS partido,
+
+            p.N_PARTIDO AS n_partido,
+
+            p.VOTO5 AS voto5,
 
 
             -- =========================================
@@ -325,6 +331,7 @@ export async function obtenerListadoAsignaciones(
 
             i.lista_nombre AS intendente_lista_nombre
 
+
         FROM asignaciones a
 
 
@@ -336,6 +343,20 @@ export async function obtenerListadoAsignaciones(
 
             ON o.telefono =
                a.operador_telefono
+
+
+        -- =========================================
+        -- PADRÓN GENERAL
+        --
+        -- Se cruza por CÉDULA.
+        --
+        -- Si no existe en regciv2,
+        -- la asignación igualmente aparece.
+        -- =========================================
+
+        LEFT JOIN padron_gral.regciv2 p
+
+            ON p.CEDULA = a.cedula
 
 
         -- =========================================

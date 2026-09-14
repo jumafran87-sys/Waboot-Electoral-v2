@@ -59,6 +59,36 @@ function limpiarNombreArchivo(valor) {
 
 
 // =====================================================
+// NORMALIZAR VOTO
+// =====================================================
+
+function normalizarVoto(valor) {
+
+    if (
+        valor === null ||
+        valor === undefined
+    ) {
+        return "-";
+    }
+
+    const v =
+        String(valor)
+            .trim()
+            .toUpperCase();
+
+    if (v === "S") {
+        return "S";
+    }
+
+    if (v === "N") {
+        return "N";
+    }
+
+    return "-";
+}
+
+
+// =====================================================
 // GENERAR PDF DE ASIGNACIONES
 // =====================================================
 
@@ -170,8 +200,6 @@ export async function generarPdfAsignaciones(
 
     // =================================================
     // SI EL CANDIDATO ES INTENDENTE
-    //
-    // Por seguridad, usamos sus propios datos.
     // =================================================
 
     if (
@@ -249,7 +277,9 @@ export async function generarPdfAsignaciones(
 
     const doc =
         new PDFDocument({
+
             size: "A4",
+
             layout: "landscape",
 
             margins: {
@@ -259,7 +289,10 @@ export async function generarPdfAsignaciones(
                 right: 25
             },
 
-            bufferPages: true
+            // IMPORTANTE:
+            // No usamos bufferPages porque el pie
+            // de página podía generar páginas nuevas.
+            bufferPages: false
         });
 
 
@@ -281,213 +314,101 @@ export async function generarPdfAsignaciones(
     const anchoPagina =
         doc.page.width;
 
+    const altoPagina =
+        doc.page.height;
+
     const anchoUtil =
-        anchoPagina -
-        50;
+        anchoPagina - 50;
 
 
     // =================================================
-    // ENCABEZADO
+    // CONFIGURACIÓN DE TABLA
     // =================================================
 
-    doc
-        .font("Helvetica-Bold")
-        .fontSize(14)
-        .text(
-            `LISTA ${texto(
-                intendenteLista ||
-                candidatoLista,
-                "-"
-            )} - ${texto(
-                intendenteCompleto,
-                "-"
-            ).toUpperCase()}`,
-            margenIzquierdo,
-            25,
-            {
-                width: anchoUtil,
-                align: "center"
-            }
-        );
+    const FILAS_POR_PAGINA = 15;
 
+    const ALTURA_ENCABEZADO = 24;
 
-    doc
-        .font("Helvetica-Bold")
-        .fontSize(10)
-        .text(
-            `${texto(
-                "INTENDENTE"
-            )} - ${texto(
-                ciudad,
-                "-"
-            ).toUpperCase()}`,
-            {
-                width: anchoUtil,
-                align: "center"
-            }
-        );
-
-
-    doc.moveDown(0.4);
-
-
-    doc
-        .font("Helvetica-Bold")
-        .fontSize(12)
-        .text(
-            "LISTA DE ASIGNACIONES",
-            {
-                width: anchoUtil,
-                align: "center"
-            }
-        );
-
-
-    doc.moveDown(0.8);
+    const ALTURA_FILA = 20;
 
 
     // =================================================
-    // INFORMACIÓN DEL CANDIDATO
-    // =================================================
-
-    const yDatos =
-        doc.y;
-
-
-    doc
-        .font("Helvetica")
-        .fontSize(9)
-        .text(
-            `Candidato: ${candidatoCompleto || "-"}`,
-            margenIzquierdo,
-            yDatos
-        );
-
-
-    doc
-        .text(
-            `Lista: ${candidatoLista || "-"}`,
-            300,
-            yDatos
-        );
-
-
-    // =================================================
-    // OPCIÓN
-    //
-    // SOLAMENTE PARA CONCEJAL
-    // =================================================
-
-    if (
-        candidatoCargo !== "INTENDENTE"
-    ) {
-
-        doc
-            .text(
-                `Opción: ${candidatoOpcion || "-"}`,
-                430,
-                yDatos
-            );
-    }
-
-
-    doc
-        .text(
-            `Fecha: ${fecha}`,
-            650,
-            yDatos
-        );
-
-
-    doc.moveDown(0.8);
-
-
-    // =================================================
-    // SEGUNDA LÍNEA
-    // =================================================
-
-    doc
-        .font("Helvetica-Bold")
-        .fontSize(9)
-        .text(
-            `Cargo: ${candidatoCargo || "-"}`,
-            margenIzquierdo
-        );
-
-
-    doc
-        .font("Helvetica")
-        .fontSize(9)
-        .text(
-            `Total de personas: ${rows.length}`,
-            300,
-            doc.y - 11
-        );
-
-
-    doc.moveDown(0.8);
-
-
-    // =================================================
-    // TABLA
+    // COLUMNAS
     // =================================================
 
     const columnas = [
 
         {
             titulo: "N°",
-            ancho: 28
+            ancho: 25
         },
 
         {
             titulo: "NOMBRE Y APELLIDO",
-            ancho: 150
+            ancho: 135
         },
 
         {
             titulo: "CÉDULA",
-            ancho: 65
+            ancho: 58
         },
 
         {
-            titulo: "SECCIONAL N°",
-            ancho: 70
+            titulo: "SECCIONAL",
+            ancho: 58
         },
 
         {
             titulo: "PARTIDO",
-            ancho: 75
+            ancho: 62
         },
 
         {
             titulo: "LOCAL",
-            ancho: 125
+            ancho: 105
         },
 
         {
             titulo: "MESA",
-            ancho: 40
+            ancho: 35
         },
 
         {
             titulo: "ORDEN",
-            ancho: 45
+            ancho: 38
         },
 
         {
             titulo: "CELULAR",
-            ancho: 85
+            ancho: 80
         },
 
         {
             titulo: "VOTO",
-            ancho: 45
+            ancho: 40
+        },
+
+        {
+            titulo: "INT. PASADA",
+            ancho: 55
         }
     ];
 
 
     // =================================================
-    // POSICIONES
+    // ANCHO REAL DE LA TABLA
+    // =================================================
+
+    const anchoTabla =
+        columnas.reduce(
+            (total, columna) =>
+                total + columna.ancho,
+            0
+        );
+
+
+    // =================================================
+    // POSICIONES X
     // =================================================
 
     function obtenerX() {
@@ -514,7 +435,148 @@ export async function generarPdfAsignaciones(
 
 
     // =================================================
-    // ENCABEZADO TABLA
+    // ENCABEZADO PRINCIPAL
+    // =================================================
+
+    function dibujarEncabezadoPrincipal() {
+
+        doc
+            .font("Helvetica-Bold")
+            .fontSize(14)
+            .fillColor("#000000")
+            .text(
+                `LISTA ${texto(
+                    intendenteLista ||
+                    candidatoLista,
+                    "-"
+                )} - ${texto(
+                    intendenteCompleto,
+                    "-"
+                ).toUpperCase()}`,
+                margenIzquierdo,
+                25,
+                {
+                    width: anchoUtil,
+                    align: "center"
+                }
+            );
+
+
+        doc
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .text(
+                `${texto(
+                    "INTENDENTE"
+                )} - ${texto(
+                    ciudad,
+                    "-"
+                ).toUpperCase()}`,
+                {
+                    width: anchoUtil,
+                    align: "center"
+                }
+            );
+
+
+        doc.moveDown(0.4);
+
+
+        doc
+            .font("Helvetica-Bold")
+            .fontSize(12)
+            .text(
+                "LISTA DE ASIGNACIONES",
+                {
+                    width: anchoUtil,
+                    align: "center"
+                }
+            );
+
+
+        doc.moveDown(0.8);
+
+
+        // =============================================
+        // DATOS DEL CANDIDATO
+        // =============================================
+
+        const yDatos =
+            doc.y;
+
+
+        doc
+            .font("Helvetica")
+            .fontSize(9)
+            .fillColor("#000000")
+            .text(
+                `Candidato: ${candidatoCompleto || "-"}`,
+                margenIzquierdo,
+                yDatos
+            );
+
+
+        doc
+            .text(
+                `Lista: ${candidatoLista || "-"}`,
+                300,
+                yDatos
+            );
+
+
+        if (
+            candidatoCargo !== "INTENDENTE"
+        ) {
+
+            doc
+                .text(
+                    `Opción: ${candidatoOpcion || "-"}`,
+                    430,
+                    yDatos
+                );
+        }
+
+
+        doc
+            .text(
+                `Fecha: ${fecha}`,
+                650,
+                yDatos
+            );
+
+
+        doc.moveDown(0.8);
+
+
+        // =============================================
+        // SEGUNDA LÍNEA
+        // =============================================
+
+        doc
+            .font("Helvetica-Bold")
+            .fontSize(9)
+            .text(
+                `Cargo: ${candidatoCargo || "-"}`,
+                margenIzquierdo
+            );
+
+
+        doc
+            .font("Helvetica")
+            .fontSize(9)
+            .text(
+                `Total de personas: ${rows.length}`,
+                300,
+                doc.y - 11
+            );
+
+
+        doc.moveDown(0.8);
+    }
+
+
+    // =================================================
+    // ENCABEZADO DE TABLA
     // =================================================
 
     function dibujarEncabezadoTabla() {
@@ -523,17 +585,16 @@ export async function generarPdfAsignaciones(
             doc.y;
 
 
-        const alto =
-            25;
+        // =============================================
+        // FONDO DEL ENCABEZADO
+        // =============================================
 
-
-        // fondo del encabezado
         doc
             .rect(
                 margenIzquierdo,
                 y,
-                anchoUtil,
-                alto
+                anchoTabla,
+                ALTURA_ENCABEZADO
             )
             .fillAndStroke(
                 "#E5E5E5",
@@ -544,21 +605,70 @@ export async function generarPdfAsignaciones(
         doc
             .fillColor("#000000")
             .font("Helvetica-Bold")
-            .fontSize(7);
+            .fontSize(6.5);
 
+
+        // =============================================
+        // LÍNEAS VERTICALES
+        // =============================================
+
+        let x =
+            margenIzquierdo;
+
+
+        columnas.forEach(
+            columna => {
+
+                doc
+                    .moveTo(
+                        x,
+                        y
+                    )
+                    .lineTo(
+                        x,
+                        y + ALTURA_ENCABEZADO
+                    )
+                    .stroke();
+
+                x += columna.ancho;
+            }
+        );
+
+
+        // Línea final
+        doc
+            .moveTo(
+                margenIzquierdo + anchoTabla,
+                y
+            )
+            .lineTo(
+                margenIzquierdo + anchoTabla,
+                y + ALTURA_ENCABEZADO
+            )
+            .stroke();
+
+
+        // =============================================
+        // TÍTULOS
+        // =============================================
 
         columnas.forEach(
             (columna, index) => {
 
                 doc.text(
                     columna.titulo,
-                    posiciones[index] + 3,
+                    posiciones[index] + 2,
                     y + 8,
                     {
                         width:
-                            columna.ancho - 6,
+                            columna.ancho - 4,
 
-                        align: "center"
+                        height:
+                            ALTURA_ENCABEZADO - 4,
+
+                        align: "center",
+
+                        lineBreak: false
                     }
                 );
             }
@@ -566,218 +676,537 @@ export async function generarPdfAsignaciones(
 
 
         doc.y =
-            y + alto;
+            y + ALTURA_ENCABEZADO;
     }
 
 
-    dibujarEncabezadoTabla();
-
-
     // =================================================
-    // ALTURA DE FILA
+    // DIBUJAR UNA FILA
     // =================================================
 
-    const alturaFila =
-        22;
+    function dibujarFila(
+        r,
+        numero,
+        esVacia = false
+    ) {
+
+        const y =
+            doc.y;
 
 
-    // =================================================
-    // FILAS
-    // =================================================
+        // =============================================
+        // BORDE GENERAL DE LA FILA
+        // =============================================
 
-    rows.forEach(
-        (r, index) => {
+        doc
+            .rect(
+                margenIzquierdo,
+                y,
+                anchoTabla,
+                ALTURA_FILA
+            )
+            .stroke("#000000");
 
-            // =============================================
-            // SALTO DE PÁGINA
-            // =============================================
 
-            if (
-                doc.y + alturaFila >
-                doc.page.height - 45
-            ) {
+        // =============================================
+        // LÍNEAS VERTICALES
+        // =============================================
 
-                doc.addPage();
+        let x =
+            margenIzquierdo;
 
-                doc.y =
-                    25;
 
-                dibujarEncabezadoTabla();
+        columnas.forEach(
+            columna => {
+
+                doc
+                    .moveTo(
+                        x,
+                        y
+                    )
+                    .lineTo(
+                        x,
+                        y + ALTURA_FILA
+                    )
+                    .stroke();
+
+                x += columna.ancho;
             }
+        );
 
 
-            const y =
-                doc.y;
+        doc
+            .moveTo(
+                margenIzquierdo + anchoTabla,
+                y
+            )
+            .lineTo(
+                margenIzquierdo + anchoTabla,
+                y + ALTURA_FILA
+            )
+            .stroke();
 
 
-            // =============================================
-            // BORDE DE FILA
-            // =============================================
+        // =============================================
+        // FILA VACÍA
+        // =============================================
 
-            doc
-                .rect(
-                    margenIzquierdo,
-                    y,
-                    anchoUtil,
-                    alturaFila
-                )
-                .stroke("#000000");
+        if (esVacia) {
 
+            doc.y =
+                y + ALTURA_FILA;
 
-            // =============================================
-            // DATOS
-            // =============================================
-
-            const nombreCompleto =
-                `${texto(r.nombre, "")} ${texto(r.apellido, "")}`
-                    .trim();
+            return;
+        }
 
 
-            const cedula =
-                texto(
-                    r.cedula
-                );
+        // =============================================
+        // NOMBRE
+        // =============================================
+
+        const nombre =
+            texto(
+                r.nombre,
+                ""
+            );
 
 
-            const seccional =
-                texto(
-                    r.seccional,
-                    ""
-                );
+        const apellido =
+            texto(
+                r.apellido,
+                ""
+            );
 
 
-            const partido =
-                texto(
-                    r.partido,
-                    ""
-                );
+        const nombreCompleto =
+            `${nombre} ${apellido}`
+                .trim();
 
 
-            const local =
-                texto(
-                    r.local
-                );
+        // =============================================
+        // CÉDULA
+        // =============================================
+
+        const cedula =
+            texto(
+                r.cedula,
+                ""
+            );
 
 
-            const mesa =
-                texto(
-                    r.mesa
-                );
+        // =============================================
+        // SECCIONAL
+        // =============================================
+
+        const seccional =
+            texto(
+                r.seccional,
+                ""
+            );
 
 
-            const orden =
-                texto(
-                    r.orden
-                );
+        // =============================================
+        // PARTIDO
+        // N° + NOMBRE
+        // =============================================
+
+        const numeroPartido =
+            texto(
+                r.n_partido,
+                ""
+            );
 
 
-            const celular =
-                texto(
-                    r.celunew ||
-                    r.celular
-                );
+        const nombrePartido =
+            texto(
+                r.partido,
+                ""
+            );
 
 
-            const voto =
-                r.voto === "S"
-                    ? "S"
-                    : "N";
+        let partido = "";
 
 
-            const valores = [
+        if (
+            numeroPartido &&
+            nombrePartido
+        ) {
 
-                index + 1,
+            partido =
+                `${numeroPartido} - ${nombrePartido}`;
 
-                nombreCompleto,
+        } else {
 
-                cedula,
-
-                seccional,
-
-                partido,
-
-                local,
-
-                mesa,
-
-                orden,
-
-                celular,
-
-                voto
-            ];
+            partido =
+                nombrePartido ||
+                numeroPartido ||
+                "";
+        }
 
 
-            // =============================================
-            // ESCRIBIR CELDAS
-            // =============================================
+        // =============================================
+        // LOCAL
+        // =============================================
 
-            doc
-                .font("Helvetica")
-                .fontSize(7)
-                .fillColor("#000000");
-
-
-            columnas.forEach(
-                (columna, colIndex) => {
-
-                    let alineacion =
-                        "left";
+        const local =
+            texto(
+                r.local,
+                ""
+            );
 
 
-                    if (
-                        [
-                            0,
-                            2,
-                            3,
-                            4,
-                            6,
-                            7,
-                            9
-                        ].includes(
-                            colIndex
-                        )
-                    ) {
+        // =============================================
+        // MESA
+        // =============================================
 
-                        alineacion =
-                            "center";
-                    }
+        const mesa =
+            texto(
+                r.mesa,
+                ""
+            );
 
+
+        // =============================================
+        // ORDEN
+        // =============================================
+
+        const orden =
+            texto(
+                r.orden,
+                ""
+            );
+
+
+        // =============================================
+        // CELULAR
+        // =============================================
+
+        const celular =
+            texto(
+                r.celunew ||
+                r.celular,
+                ""
+            );
+
+
+        // =============================================
+        // VOTO ACTUAL
+        // =============================================
+
+        const voto =
+            normalizarVoto(
+                r.voto
+            );
+
+
+        // =============================================
+        // VOTO INTERNA PASADA
+        // =============================================
+
+        const votoInternaPasada =
+            normalizarVoto(
+                r.voto5
+            );
+
+
+        // =============================================
+        // VALORES
+        // =============================================
+
+        const valores = [
+
+            numero,
+
+            nombreCompleto,
+
+            cedula,
+
+            seccional,
+
+            partido,
+
+            local,
+
+            mesa,
+
+            orden,
+
+            celular,
+
+            voto,
+
+            votoInternaPasada
+        ];
+
+
+        // =============================================
+        // ESCRIBIR DATOS
+        // =============================================
+
+        doc
+            .font("Helvetica")
+            .fontSize(6.8)
+            .fillColor("#000000");
+
+
+        columnas.forEach(
+            (columna, colIndex) => {
+
+                let alineacion =
+                    "left";
+
+
+                // =====================================
+                // CENTRADOS
+                // =====================================
+
+                if (
+                    [
+                        0,
+                        2,
+                        3,
+                        4,
+                        6,
+                        7,
+                        9,
+                        10
+                    ].includes(
+                        colIndex
+                    )
+                ) {
+
+                    alineacion =
+                        "center";
+                }
+
+
+                const valor =
+                    valores[colIndex];
+
+
+                if (
+                    valor !== null &&
+                    valor !== undefined &&
+                    String(valor).trim() !== ""
+                ) {
 
                     doc.text(
-                        texto(
-                            valores[colIndex]
-                        ),
-                        posiciones[colIndex] + 3,
-                        y + 7,
+                        String(valor),
+                        posiciones[colIndex] + 2,
+                        y + 6,
                         {
                             width:
-                                columna.ancho - 6,
+                                columna.ancho - 4,
 
                             height:
-                                alturaFila - 4,
+                                ALTURA_FILA - 3,
 
                             align:
                                 alineacion,
 
                             ellipsis:
-                                true
+                                true,
+
+                            lineBreak:
+                                false
                         }
                     );
-                });
+                }
+            }
+        );
+
+
+        doc.y =
+            y + ALTURA_FILA;
+    }
+
+
+    // =================================================
+    // CALCULAR PÁGINAS
+    // =================================================
+
+    const totalPaginas =
+        Math.max(
+            1,
+            Math.ceil(
+                rows.length /
+                FILAS_POR_PAGINA
+            )
+        );
+
+
+    // =================================================
+    // GENERAR PÁGINAS
+    // =================================================
+
+    for (
+        let pagina = 0;
+        pagina < totalPaginas;
+        pagina++
+    ) {
+
+        // =============================================
+        // PRIMERA PÁGINA
+        // =============================================
+
+        if (pagina === 0) {
+
+            dibujarEncabezadoPrincipal();
+
+        } else {
+
+            doc.addPage();
+
+            doc.y = 25;
+
+            // Encabezado pequeño para páginas
+            // posteriores
+
+            doc
+                .font("Helvetica-Bold")
+                .fontSize(10)
+                .fillColor("#000000")
+                .text(
+                    `LISTA ${texto(
+                        intendenteLista ||
+                        candidatoLista,
+                        "-"
+                    )} - ${texto(
+                        intendenteCompleto,
+                        "-"
+                    ).toUpperCase()}`,
+                    margenIzquierdo,
+                    25,
+                    {
+                        width: anchoUtil,
+                        align: "center"
+                    }
+                );
+
+
+            doc
+                .font("Helvetica")
+                .fontSize(8)
+                .text(
+                    `Candidato: ${candidatoCompleto || "-"}`,
+                    margenIzquierdo,
+                    42,
+                    {
+                        width: anchoUtil,
+                        align: "center"
+                    }
+                );
 
 
             doc.y =
-                y + alturaFila;
+                58;
         }
-    );
+
+
+        // =============================================
+        // ENCABEZADO TABLA
+        // =============================================
+
+        dibujarEncabezadoTabla();
+
+
+        // =============================================
+        // FILAS DE ESTA PÁGINA
+        // =============================================
+
+        const inicio =
+            pagina *
+            FILAS_POR_PAGINA;
+
+
+        const fin =
+            Math.min(
+                inicio +
+                FILAS_POR_PAGINA,
+                rows.length
+            );
+
+
+        const filasDeEstaPagina =
+            rows.slice(
+                inicio,
+                fin
+            );
+
+
+        // =============================================
+        // DIBUJAR REGISTROS
+        // =============================================
+
+        for (
+            let i = 0;
+            i < FILAS_POR_PAGINA;
+            i++
+        ) {
+
+            const indiceGlobal =
+                inicio + i;
+
+
+            if (
+                indiceGlobal < rows.length
+            ) {
+
+                dibujarFila(
+                    rows[indiceGlobal],
+                    indiceGlobal + 1,
+                    false
+                );
+
+            } else {
+
+                // =====================================
+                // FILA VACÍA
+                // =====================================
+
+                dibujarFila(
+                    null,
+                    "",
+                    true
+                );
+            }
+        }
+
+
+        // =============================================
+        // PIE DE PÁGINA
+        // =============================================
+
+        doc
+            .font("Helvetica")
+            .fontSize(7)
+            .fillColor("#555555")
+            .text(
+                `Página ${pagina + 1} de ${totalPaginas}`,
+                margenIzquierdo,
+                altoPagina - 25,
+                {
+                    width:
+                        anchoUtil,
+
+                    align:
+                        "right",
+
+                    lineBreak:
+                        false
+                }
+            );
+    }
 
 
     // =================================================
     // RESUMEN FINAL
     // =================================================
 
-    doc.moveDown(1);
+    // Nos posicionamos debajo de la última fila.
+    // El resumen se coloca en la última página.
+
+    doc.moveDown(0.4);
 
 
     const total =
@@ -786,7 +1215,10 @@ export async function generarPdfAsignaciones(
 
     const votos =
         rows.filter(
-            r => r.voto === "S"
+            r =>
+                String(r.voto || "")
+                    .trim()
+                    .toUpperCase() === "S"
         ).length;
 
 
@@ -797,6 +1229,7 @@ export async function generarPdfAsignaciones(
     doc
         .font("Helvetica-Bold")
         .fontSize(9)
+        .fillColor("#000000")
         .text(
             `TOTAL DE PERSONAS: ${total}`
         );
@@ -816,7 +1249,7 @@ export async function generarPdfAsignaciones(
         );
 
 
-    doc.moveDown(1);
+    doc.moveDown(0.4);
 
 
     // =================================================
@@ -828,20 +1261,33 @@ export async function generarPdfAsignaciones(
 
 
     doc
-        .moveTo(100, yFirma + 25)
-        .lineTo(350, yFirma + 25)
+        .moveTo(
+            100,
+            yFirma + 25
+        )
+        .lineTo(
+            350,
+            yFirma + 25
+        )
         .stroke();
 
 
     doc
-        .moveTo(520, yFirma + 25)
-        .lineTo(770, yFirma + 25)
+        .moveTo(
+            520,
+            yFirma + 25
+        )
+        .lineTo(
+            770,
+            yFirma + 25
+        )
         .stroke();
 
 
     doc
         .font("Helvetica")
-        .fontSize(8);
+        .fontSize(8)
+        .fillColor("#000000");
 
 
     doc
@@ -866,43 +1312,6 @@ export async function generarPdfAsignaciones(
                 align: "center"
             }
         );
-
-
-    // =================================================
-    // PIE DE PÁGINA
-    // =================================================
-
-    const paginas =
-        doc.bufferedPageRange();
-
-
-    for (
-        let i = 0;
-        i < paginas.count;
-        i++
-    ) {
-
-        doc.switchToPage(
-            i
-        );
-
-
-        doc
-            .font("Helvetica")
-            .fontSize(7)
-            .fillColor("#555555")
-            .text(
-                `Página ${i + 1} de ${paginas.count}`,
-                25,
-                doc.page.height - 20,
-                {
-                    width:
-                        doc.page.width - 50,
-
-                    align: "right"
-                }
-            );
-    }
 
 
     // =================================================
