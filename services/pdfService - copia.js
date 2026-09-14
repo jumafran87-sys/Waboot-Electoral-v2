@@ -233,22 +233,6 @@ export async function generarPdfAsignaciones(
 
 
     // =================================================
-    // OPERADOR
-    // =================================================
-
-    /*
-     * El operador ya viene desde reporteService
-     * como operador_nombre.
-     */
-
-    const operadorNombre =
-        texto(
-            primero.operador_nombre,
-            "Operador"
-        );
-
-
-    // =================================================
     // FECHA
     // =================================================
 
@@ -305,6 +289,9 @@ export async function generarPdfAsignaciones(
                 right: 25
             },
 
+            // IMPORTANTE:
+            // No usamos bufferPages porque el pie
+            // de página podía generar páginas nuevas.
             bufferPages: false
         });
 
@@ -338,11 +325,11 @@ export async function generarPdfAsignaciones(
     // CONFIGURACIÓN DE TABLA
     // =================================================
 
+    const FILAS_POR_PAGINA = 15;
+
     const ALTURA_ENCABEZADO = 24;
 
     const ALTURA_FILA = 20;
-
-    const MARGEN_INFERIOR_TABLA = 55;
 
 
     // =================================================
@@ -448,13 +435,6 @@ export async function generarPdfAsignaciones(
 
 
     // =================================================
-    // CONTROL DE PÁGINAS
-    // =================================================
-
-    let numeroPagina = 1;
-
-
-    // =================================================
     // ENCABEZADO PRINCIPAL
     // =================================================
 
@@ -465,7 +445,6 @@ export async function generarPdfAsignaciones(
             .fontSize(14)
             .fillColor("#000000")
             .text(
-
                 `LISTA ${texto(
                     intendenteLista ||
                     candidatoLista,
@@ -474,14 +453,11 @@ export async function generarPdfAsignaciones(
                     intendenteCompleto,
                     "-"
                 ).toUpperCase()}`,
-
                 margenIzquierdo,
                 25,
-
                 {
                     width: anchoUtil,
-                    align: "center",
-                    lineBreak: false
+                    align: "center"
                 }
             );
 
@@ -490,46 +466,43 @@ export async function generarPdfAsignaciones(
             .font("Helvetica-Bold")
             .fontSize(10)
             .text(
-
-                `INTENDENTE - ${texto(
+                `${texto(
+                    "INTENDENTE"
+                )} - ${texto(
                     ciudad,
                     "-"
                 ).toUpperCase()}`,
-
-                margenIzquierdo,
-                44,
-
                 {
                     width: anchoUtil,
-                    align: "center",
-                    lineBreak: false
+                    align: "center"
                 }
             );
+
+
+        doc.moveDown(0.4);
 
 
         doc
             .font("Helvetica-Bold")
             .fontSize(12)
             .text(
-
                 "LISTA DE ASIGNACIONES",
-
-                margenIzquierdo,
-                65,
-
                 {
                     width: anchoUtil,
-                    align: "center",
-                    lineBreak: false
+                    align: "center"
                 }
             );
 
 
-        // =================================================
-        // DATOS DEL CANDIDATO
-        // =================================================
+        doc.moveDown(0.8);
 
-        const yDatos = 88;
+
+        // =============================================
+        // DATOS DEL CANDIDATO
+        // =============================================
+
+        const yDatos =
+            doc.y;
 
 
         doc
@@ -539,10 +512,7 @@ export async function generarPdfAsignaciones(
             .text(
                 `Candidato: ${candidatoCompleto || "-"}`,
                 margenIzquierdo,
-                yDatos,
-                {
-                    lineBreak: false
-                }
+                yDatos
             );
 
 
@@ -550,10 +520,7 @@ export async function generarPdfAsignaciones(
             .text(
                 `Lista: ${candidatoLista || "-"}`,
                 300,
-                yDatos,
-                {
-                    lineBreak: false
-                }
+                yDatos
             );
 
 
@@ -565,10 +532,7 @@ export async function generarPdfAsignaciones(
                 .text(
                     `Opción: ${candidatoOpcion || "-"}`,
                     430,
-                    yDatos,
-                    {
-                        lineBreak: false
-                    }
+                    yDatos
                 );
         }
 
@@ -577,30 +541,23 @@ export async function generarPdfAsignaciones(
             .text(
                 `Fecha: ${fecha}`,
                 650,
-                yDatos,
-                {
-                    lineBreak: false
-                }
+                yDatos
             );
 
 
-        // =================================================
+        doc.moveDown(0.8);
+
+
+        // =============================================
         // SEGUNDA LÍNEA
-        // =================================================
+        // =============================================
 
         doc
             .font("Helvetica-Bold")
             .fontSize(9)
             .text(
-
                 `Cargo: ${candidatoCargo || "-"}`,
-
-                margenIzquierdo,
-                104,
-
-                {
-                    lineBreak: false
-                }
+                margenIzquierdo
             );
 
 
@@ -608,77 +565,13 @@ export async function generarPdfAsignaciones(
             .font("Helvetica")
             .fontSize(9)
             .text(
-
                 `Total de personas: ${rows.length}`,
-
                 300,
-                104,
-
-                {
-                    lineBreak: false
-                }
+                doc.y - 11
             );
 
 
-        doc.y = 124;
-    }
-
-
-    // =================================================
-    // ENCABEZADO PEQUEÑO
-    // PARA PÁGINAS SIGUIENTES
-    // =================================================
-
-    function dibujarEncabezadoPaginaSecundaria() {
-
-        doc.y = 25;
-
-
-        doc
-            .font("Helvetica-Bold")
-            .fontSize(10)
-            .fillColor("#000000")
-            .text(
-
-                `LISTA ${texto(
-                    intendenteLista ||
-                    candidatoLista,
-                    "-"
-                )} - ${texto(
-                    intendenteCompleto,
-                    "-"
-                ).toUpperCase()}`,
-
-                margenIzquierdo,
-                25,
-
-                {
-                    width: anchoUtil,
-                    align: "center",
-                    lineBreak: false
-                }
-            );
-
-
-        doc
-            .font("Helvetica")
-            .fontSize(8)
-            .text(
-
-                `Candidato: ${candidatoCompleto || "-"}`,
-
-                margenIzquierdo,
-                42,
-
-                {
-                    width: anchoUtil,
-                    align: "center",
-                    lineBreak: false
-                }
-            );
-
-
-        doc.y = 58;
+        doc.moveDown(0.8);
     }
 
 
@@ -692,9 +585,9 @@ export async function generarPdfAsignaciones(
             doc.y;
 
 
-        // =================================================
-        // FONDO
-        // =================================================
+        // =============================================
+        // FONDO DEL ENCABEZADO
+        // =============================================
 
         doc
             .rect(
@@ -715,9 +608,9 @@ export async function generarPdfAsignaciones(
             .fontSize(6.5);
 
 
-        // =================================================
+        // =============================================
         // LÍNEAS VERTICALES
-        // =================================================
+        // =============================================
 
         let x =
             margenIzquierdo;
@@ -742,6 +635,7 @@ export async function generarPdfAsignaciones(
         );
 
 
+        // Línea final
         doc
             .moveTo(
                 margenIzquierdo + anchoTabla,
@@ -754,23 +648,18 @@ export async function generarPdfAsignaciones(
             .stroke();
 
 
-        // =================================================
+        // =============================================
         // TÍTULOS
-        // =================================================
+        // =============================================
 
         columnas.forEach(
             (columna, index) => {
 
                 doc.text(
-
                     columna.titulo,
-
                     posiciones[index] + 2,
-
                     y + 8,
-
                     {
-
                         width:
                             columna.ancho - 4,
 
@@ -792,21 +681,22 @@ export async function generarPdfAsignaciones(
 
 
     // =================================================
-    // DIBUJAR FILA
+    // DIBUJAR UNA FILA
     // =================================================
 
     function dibujarFila(
         r,
-        numero
+        numero,
+        esVacia = false
     ) {
 
         const y =
             doc.y;
 
 
-        // =================================================
-        // BORDE GENERAL
-        // =================================================
+        // =============================================
+        // BORDE GENERAL DE LA FILA
+        // =============================================
 
         doc
             .rect(
@@ -818,9 +708,9 @@ export async function generarPdfAsignaciones(
             .stroke("#000000");
 
 
-        // =================================================
+        // =============================================
         // LÍNEAS VERTICALES
-        // =================================================
+        // =============================================
 
         let x =
             margenIzquierdo;
@@ -857,9 +747,22 @@ export async function generarPdfAsignaciones(
             .stroke();
 
 
-        // =================================================
+        // =============================================
+        // FILA VACÍA
+        // =============================================
+
+        if (esVacia) {
+
+            doc.y =
+                y + ALTURA_FILA;
+
+            return;
+        }
+
+
+        // =============================================
         // NOMBRE
-        // =================================================
+        // =============================================
 
         const nombre =
             texto(
@@ -880,9 +783,9 @@ export async function generarPdfAsignaciones(
                 .trim();
 
 
-        // =================================================
+        // =============================================
         // CÉDULA
-        // =================================================
+        // =============================================
 
         const cedula =
             texto(
@@ -891,9 +794,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // SECCIONAL
-        // =================================================
+        // =============================================
 
         const seccional =
             texto(
@@ -902,10 +805,10 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // PARTIDO
-        // NÚMERO + NOMBRE
-        // =================================================
+        // N° + NOMBRE
+        // =============================================
 
         const numeroPartido =
             texto(
@@ -941,9 +844,9 @@ export async function generarPdfAsignaciones(
         }
 
 
-        // =================================================
+        // =============================================
         // LOCAL
-        // =================================================
+        // =============================================
 
         const local =
             texto(
@@ -952,9 +855,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // MESA
-        // =================================================
+        // =============================================
 
         const mesa =
             texto(
@@ -963,9 +866,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // ORDEN
-        // =================================================
+        // =============================================
 
         const orden =
             texto(
@@ -974,9 +877,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // CELULAR
-        // =================================================
+        // =============================================
 
         const celular =
             texto(
@@ -986,9 +889,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // VOTO ACTUAL
-        // =================================================
+        // =============================================
 
         const voto =
             normalizarVoto(
@@ -996,10 +899,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // VOTO INTERNA PASADA
-        // VOTO5
-        // =================================================
+        // =============================================
 
         const votoInternaPasada =
             normalizarVoto(
@@ -1007,9 +909,9 @@ export async function generarPdfAsignaciones(
             );
 
 
-        // =================================================
+        // =============================================
         // VALORES
-        // =================================================
+        // =============================================
 
         const valores = [
 
@@ -1037,9 +939,9 @@ export async function generarPdfAsignaciones(
         ];
 
 
-        // =================================================
-        // ESCRIBIR
-        // =================================================
+        // =============================================
+        // ESCRIBIR DATOS
+        // =============================================
 
         doc
             .font("Helvetica")
@@ -1054,9 +956,9 @@ export async function generarPdfAsignaciones(
                     "left";
 
 
-                // =================================================
+                // =====================================
                 // CENTRADOS
-                // =================================================
+                // =====================================
 
                 if (
                     [
@@ -1089,15 +991,10 @@ export async function generarPdfAsignaciones(
                 ) {
 
                     doc.text(
-
                         String(valor),
-
                         posiciones[colIndex] + 2,
-
                         y + 6,
-
                         {
-
                             width:
                                 columna.ancho - 4,
 
@@ -1125,86 +1022,192 @@ export async function generarPdfAsignaciones(
 
 
     // =================================================
-    // PIE DE PÁGINA
+    // CALCULAR PÁGINAS
     // =================================================
 
-    function dibujarPiePagina() {
-
-    doc.save();
-
-    doc.font("Helvetica")
-        .fontSize(7)
-        .fillColor("#555555");
-
-    doc.text(
-        `Lista de asignaciones - Página ${numeroPagina}`,
-        margenIzquierdo,
-        altoPagina - 18,
-        {
-            width: anchoUtil,
-            height: 10,
-            align: "right",
-            lineBreak: false
-        }
-    );
-
-    doc.restore();
-}
+    const totalPaginas =
+        Math.max(
+            1,
+            Math.ceil(
+                rows.length /
+                FILAS_POR_PAGINA
+            )
+        );
 
 
     // =================================================
-    // PRIMERA PÁGINA
-    // =================================================
-
-    dibujarEncabezadoPrincipal();
-
-    dibujarEncabezadoTabla();
-
-
-    // =================================================
-    // DIBUJAR REGISTROS
-    // SIN FILAS VACÍAS
+    // GENERAR PÁGINAS
     // =================================================
 
     for (
-        let i = 0;
-        i < rows.length;
-        i++
+        let pagina = 0;
+        pagina < totalPaginas;
+        pagina++
     ) {
 
-        // =================================================
-        // CONTROL REAL DEL ESPACIO
-        // =================================================
+        // =============================================
+        // PRIMERA PÁGINA
+        // =============================================
 
-        if (
-            doc.y +
-            ALTURA_FILA >
-            altoPagina -
-            MARGEN_INFERIOR_TABLA
-        ) {
+        if (pagina === 0) {
 
-            dibujarPiePagina();
+            dibujarEncabezadoPrincipal();
+
+        } else {
 
             doc.addPage();
 
-            numeroPagina++;
+            doc.y = 25;
 
-            dibujarEncabezadoPaginaSecundaria();
+            // Encabezado pequeño para páginas
+            // posteriores
 
-            dibujarEncabezadoTabla();
+            doc
+                .font("Helvetica-Bold")
+                .fontSize(10)
+                .fillColor("#000000")
+                .text(
+                    `LISTA ${texto(
+                        intendenteLista ||
+                        candidatoLista,
+                        "-"
+                    )} - ${texto(
+                        intendenteCompleto,
+                        "-"
+                    ).toUpperCase()}`,
+                    margenIzquierdo,
+                    25,
+                    {
+                        width: anchoUtil,
+                        align: "center"
+                    }
+                );
+
+
+            doc
+                .font("Helvetica")
+                .fontSize(8)
+                .text(
+                    `Candidato: ${candidatoCompleto || "-"}`,
+                    margenIzquierdo,
+                    42,
+                    {
+                        width: anchoUtil,
+                        align: "center"
+                    }
+                );
+
+
+            doc.y =
+                58;
         }
 
 
-        dibujarFila(
-            rows[i],
-            i + 1
-        );
+        // =============================================
+        // ENCABEZADO TABLA
+        // =============================================
+
+        dibujarEncabezadoTabla();
+
+
+        // =============================================
+        // FILAS DE ESTA PÁGINA
+        // =============================================
+
+        const inicio =
+            pagina *
+            FILAS_POR_PAGINA;
+
+
+        const fin =
+            Math.min(
+                inicio +
+                FILAS_POR_PAGINA,
+                rows.length
+            );
+
+
+        const filasDeEstaPagina =
+            rows.slice(
+                inicio,
+                fin
+            );
+
+
+        // =============================================
+        // DIBUJAR REGISTROS
+        // =============================================
+
+        for (
+            let i = 0;
+            i < FILAS_POR_PAGINA;
+            i++
+        ) {
+
+            const indiceGlobal =
+                inicio + i;
+
+
+            if (
+                indiceGlobal < rows.length
+            ) {
+
+                dibujarFila(
+                    rows[indiceGlobal],
+                    indiceGlobal + 1,
+                    false
+                );
+
+            } else {
+
+                // =====================================
+                // FILA VACÍA
+                // =====================================
+
+                dibujarFila(
+                    null,
+                    "",
+                    true
+                );
+            }
+        }
+
+
+        // =============================================
+        // PIE DE PÁGINA
+        // =============================================
+
+        doc
+            .font("Helvetica")
+            .fontSize(7)
+            .fillColor("#555555")
+            .text(
+                `Página ${pagina + 1} de ${totalPaginas}`,
+                margenIzquierdo,
+                altoPagina - 25,
+                {
+                    width:
+                        anchoUtil,
+
+                    align:
+                        "right",
+
+                    lineBreak:
+                        false
+                }
+            );
     }
 
 
     // =================================================
-    // RESUMEN
+    // RESUMEN FINAL
     // =================================================
+
+    // Nos posicionamos debajo de la última fila.
+    // El resumen se coloca en la última página.
+
+    doc.moveDown(0.4);
+
 
     const total =
         rows.length;
@@ -1223,52 +1226,12 @@ export async function generarPdfAsignaciones(
         total - votos;
 
 
-    // =================================================
-    // ESPACIO NECESARIO PARA RESUMEN + FIRMAS
-    // =================================================
-
-    const ALTURA_RESUMEN_FIRMAS = 105;
-
-
-    if (
-        doc.y +
-        ALTURA_RESUMEN_FIRMAS >
-        altoPagina - 25
-    ) {
-
-        dibujarPiePagina();
-
-        doc.addPage();
-
-        numeroPagina++;
-
-        dibujarEncabezadoPaginaSecundaria();
-
-        doc.y = 75;
-    }
-
-
-    // =================================================
-    // RESUMEN FINAL
-    // =================================================
-
-    doc.moveDown(0.4);
-
-
     doc
         .font("Helvetica-Bold")
         .fontSize(9)
         .fillColor("#000000")
         .text(
-
-            `TOTAL DE PERSONAS: ${total}`,
-
-            margenIzquierdo,
-            doc.y,
-
-            {
-                lineBreak: false
-            }
+            `TOTAL DE PERSONAS: ${total}`
         );
 
 
@@ -1276,33 +1239,17 @@ export async function generarPdfAsignaciones(
         .font("Helvetica")
         .fontSize(9)
         .text(
-
-            `VOTOS CONFIRMADOS: ${votos}`,
-
-            220,
-            doc.y - 11,
-
-            {
-                lineBreak: false
-            }
+            `VOTOS CONFIRMADOS: ${votos}`
         );
 
 
     doc
         .text(
-
-            `PENDIENTES: ${pendientes}`,
-
-            430,
-            doc.y - 11,
-
-            {
-                lineBreak: false
-            }
+            `PENDIENTES: ${pendientes}`
         );
 
 
-    doc.y += 22;
+    doc.moveDown(0.4);
 
 
     // =================================================
@@ -1312,10 +1259,6 @@ export async function generarPdfAsignaciones(
     const yFirma =
         doc.y;
 
-
-    // =================================================
-    // LÍNEA FIRMA OPERADOR
-    // =================================================
 
     doc
         .moveTo(
@@ -1329,10 +1272,6 @@ export async function generarPdfAsignaciones(
         .stroke();
 
 
-    // =================================================
-    // LÍNEA FIRMA RECEPCIÓN
-    // =================================================
-
     doc
         .moveTo(
             520,
@@ -1345,74 +1284,34 @@ export async function generarPdfAsignaciones(
         .stroke();
 
 
-    // =================================================
-    // TEXTO FIRMA OPERADOR
-    // =================================================
-
-    doc
-        .font("Helvetica-Bold")
-        .fontSize(8)
-        .fillColor("#000000")
-        .text(
-
-            operadorNombre,
-
-            100,
-            yFirma + 30,
-
-            {
-                width: 250,
-                align: "center",
-                lineBreak: false
-            }
-        );
-
-
     doc
         .font("Helvetica")
-        .fontSize(7)
-        .text(
+        .fontSize(8)
+        .fillColor("#000000");
 
-            "Operador",
-
-            100,
-            yFirma + 42,
-
-            {
-                width: 250,
-                align: "center",
-                lineBreak: false
-            }
-        );
-
-
-    // =================================================
-    // FIRMA / RECEPCIÓN
-    // =================================================
 
     doc
-        .font("Helvetica-Bold")
-        .fontSize(8)
         .text(
-
-            "Firma / Recepción",
-
-            520,
+            "Firma del Operador",
+            100,
             yFirma + 30,
-
             {
                 width: 250,
-                align: "center",
-                lineBreak: false
+                align: "center"
             }
         );
 
 
-    // =================================================
-    // PIE ÚLTIMA PÁGINA
-    // =================================================
-
-    dibujarPiePagina();
+    doc
+        .text(
+            "Firma / Recepción",
+            520,
+            yFirma + 30,
+            {
+                width: 250,
+                align: "center"
+            }
+        );
 
 
     // =================================================
@@ -1452,8 +1351,7 @@ export async function generarPdfAsignaciones(
 
         nombreArchivo,
 
-        total:
-            rows.length,
+        total: rows.length,
 
         candidato:
             candidatoCompleto,
@@ -1468,9 +1366,6 @@ export async function generarPdfAsignaciones(
         opcion:
             candidatoCargo === "INTENDENTE"
                 ? null
-                : candidatoOpcion,
-
-        operador:
-            operadorNombre
+                : candidatoOpcion
     };
 }
