@@ -172,7 +172,67 @@ if (votoRegistrado.length > 0) {
 
     const registro = votoRegistrado[0];
 
+
+    // ===================================================
+    // BUSCAR NOMBRE DEL OPERADOR
+    // ===================================================
+
+    let operadorTexto = registro.voto_operador;
+
+    try {
+
+        const [operadorRows] = await db.execute(
+            `
+            SELECT nombre
+            FROM operadores
+            WHERE telefono = ?
+            LIMIT 1
+            `,
+            [
+                registro.voto_operador
+            ]
+        );
+
+
+        if (operadorRows.length > 0) {
+
+            const nombreOperador =
+                operadorRows[0].nombre
+                    .trim()
+                    .replace(/\s+/g, " ");
+
+            // Convertir:
+            // Carlos Sotelo
+            // en:
+            // CarlosSotelo
+
+            const nombreCorto =
+                nombreOperador.replace(/\s+/g, "");
+
+            // Últimos 3 dígitos del teléfono
+            const ultimos3 =
+                String(registro.voto_operador).slice(-3);
+
+            operadorTexto =
+                `${nombreCorto}-${ultimos3}`;
+        }
+
+    } catch (err) {
+
+        console.log(
+            "⚠️ No se pudo obtener nombre del operador:",
+            err.message
+        );
+
+    }
+
+
+    // ===================================================
+    // MOSTRAR YA VOTÓ
+    // ===================================================
+
     await sock.sendMessage(from, {
+
         text:
             "🗳️ YA VOTÓ\n\n" +
 
@@ -182,12 +242,15 @@ if (votoRegistrado.length > 0) {
             "C.I. " + ciudadano.CEDULA + "\n\n" +
 
             "✓ Voto registrado\n" +
+
             "📅 " +
             new Date(registro.voto_fecha)
-                .toLocaleString("es-PY") + "\n\n" +
+                .toLocaleString("es-PY") +
+
+            "\n\n" +
 
             "Operador: " +
-            registro.voto_operador
+            operadorTexto
     });
 
     return true;

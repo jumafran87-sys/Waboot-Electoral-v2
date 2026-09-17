@@ -11,7 +11,8 @@ import {
 
 import {
     obtenerModoBot,
-    cambiarModoBot
+    cambiarModoBot,
+	 obtenerModoBotPorCandidato
 } from "../services/configBotService.js";
 
 
@@ -102,15 +103,8 @@ export async function handleCommand(
 const cleanText = text.trim();
 const cleanLower = cleanText.toLowerCase();
 
-const modo = await obtenerModoBot();
 
-console.log("🟢 MODO BOT:", modo);
-
-
-
-
-
- // ===================================================
+// ===================================================
 // VALIDAR OPERADOR
 // ===================================================
 
@@ -126,7 +120,40 @@ if (!op) {
 }
 
 
+// ===================================================
+// OBTENER USUARIO
+// ===================================================
+
 const usuario = await obtenerRol(telefono);
+
+
+// ===================================================
+// OBTENER CANDIDATO DEL OPERADOR
+// ===================================================
+
+const candidatoId = Number(op.candidato_id || 0);
+
+console.log(
+    "👤 OPERADOR:",
+    telefono,
+    "CANDIDATO ID:",
+    candidatoId
+);
+
+
+// ===================================================
+// OBTENER MODO SEGÚN CANDIDATO
+// ===================================================
+
+const modo =
+    await obtenerModoBotPorCandidato(candidatoId);
+
+console.log(
+    "🟢 MODO BOT:",
+    modo,
+    "| CANDIDATO:",
+    candidatoId
+);
 
 
 const zonaOperador =
@@ -629,6 +656,231 @@ Sin asignar
 
     return;
   }
+  
+// ===================================================
+// TOP OPERADORES POR CANDIDATO - ADMIN
+// ===================================================
+
+if (
+    cleanLower === "top" ||
+    cleanLower.startsWith("top ")
+) {
+
+    // -----------------------------------------------
+    // SOLO ADMIN
+    // -----------------------------------------------
+
+    if (telefono !== ADMIN) {
+        await sock.sendMessage(from, {
+            text: "⛔ No autorizado."
+        });
+        return;
+    }
+
+    try {
+
+        // -------------------------------------------
+        // OBTENER ID DEL CANDIDATO
+        // -------------------------------------------
+
+        const partes = cleanLower.split(/\s+/);
+        const candidatoId = Number(partes[1]);
+
+        if (!Number.isInteger(candidatoId) || candidatoId <= 0) {
+
+            await sock.sendMessage(from, {
+                text:
+                    `❌ Debés indicar el ID del candidato.\n\n` +
+                    `Ejemplo:\n` +
+                    `top 6`
+            });
+
+            return;
+        }
+
+        console.log(
+            `📊 GENERANDO TOP OPERADORES - CANDIDATO ID: ${candidatoId}`
+        );
+
+        // -------------------------------------------
+        // CONSULTAR CANDIDATO
+        // -------------------------------------------
+
+        const [candidatos] = await db.execute(
+            `
+            SELECT
+                id,
+                nombre,
+                apellido,
+                cargo,
+                lista_numero,
+                lista_nombre,
+                opcion
+            FROM candidatos
+            WHERE id = ?
+            LIMIT 1
+            `,
+            [candidatoId]
+        );
+
+        if (candidatos.length === 0) {
+
+            await sock.sendMessage(from, {
+                text:
+                    `❌ No existe un candidato con ID ${candidatoId}.`
+            });
+
+            return;
+        }
+
+        const candidato = candidatos[0];
+
+        // -------------------------------------------
+        // TOP OPERADORES
+        // -------------------------------------------
+
+        const [rows] = await db.execute(
+            `
+            SELECT
+                a.operador_telefono,
+                o.nombre AS operador_nombre,
+
+                COUNT(DISTINCT a.cedula) AS total,
+
+                COUNT(
+                    CASE
+                        WHEN a.voto = 'S' THEN 1
+                    END
+                ) AS votos
+
+            FROM asignaciones a
+
+            LEFT JOIN operadores o
+                ON o.telefono = a.operador_telefono
+
+            WHERE a.candidato_id = ?
+
+            GROUP BY
+                a.operador_telefono,
+                o.nombre
+
+            ORDER BY total DESC
+
+            LIMIT 50
+            `,
+            [candidatoId]
+        );
+
+        // -------------------------------------------
+        // SIN DATOS
+        // -------------------------------------------
+
+        if (rows.length === 0) {
+
+            await sock.sendMessage(from, {
+                text:
+                    `👥 *TOP OPERADORES*\n\n` +
+                    `Candidato: ${candidato.nombre} ${candidato.apellido}\n` +
+                    `ID: ${candidatoId}\n\n` +
+                    `No existen asignaciones registradas.`
+            });
+
+            return;
+        }
+
+        // -------------------------------------------
+        // ENCABEZADO
+        // -------------------------------------------
+
+        let msg =
+            `👥 *TOP OPERADORES*\n\n` +
+            `🎯 *Candidato:*\n` +
+            `${candidato.nombre} ${candidato.apellido}\n`;
+
+        if (candidato.cargo) {
+            msg += `Cargo: ${candidato.cargo}\n`;
+        }
+
+        if (candidato.lista_numero) {
+            msg += `Lista: ${candidato.lista_numero}`;
+
+            if (candidato.opcion) {
+                msg += `  Opción: ${candidato.opcion}`;
+            }
+
+            msg += `\n`;
+        }
+
+        msg +=
+            `ID candidato: ${candidatoId}\n\n` +
+            `👥 *RANKING*\n\n` +
+            `Ord  Operador             Reg.   Votos\n` +
+            `───────────────────────────────────────\n`;
+
+        // -------------------------------------------
+        // ARMAR RANKING
+        // -------------------------------------------
+
+        rows.forEach((r, i) => {
+
+            const nombre =
+                (r.operador_nombre || "SIN NOMBRE")
+                    .trim()
+                    .split(/\s+/)[0];
+
+            const telefonoOperador =
+                String(r.operador_telefono || "");
+
+            const ultimos3 =
+                telefonoOperador.slice(-3);
+
+            const operador =
+                `${nombre}-${ultimos3}`;
+
+            const total =
+                Number(r.total || 0);
+
+            const votos =
+                Number(r.votos || 0);
+
+            msg +=
+                `${String(i + 1).padEnd(5)}` +
+                `${operador.padEnd(21)}` +
+                `${String(total).padStart(5)}` +
+                `${String(votos).padStart(8)}\n`;
+        });
+
+        // -------------------------------------------
+        // ENVIAR
+        // -------------------------------------------
+
+        await sock.sendMessage(from, {
+            text: msg
+        });
+
+        console.log(
+            `✅ TOP OPERADORES ENVIADO - CANDIDATO ${candidatoId}: ${rows.length} operadores`
+        );
+
+        return;
+
+    } catch (err) {
+
+        console.error(
+            "❌ ERROR TOP OPERADORES:",
+            err
+        );
+
+        await sock.sendMessage(from, {
+            text:
+                `❌ Error al obtener el TOP de operadores.\n\n` +
+                `Verificá la conexión con la base de datos.`
+        });
+
+        return;
+    }
+}
+  
   
 // ===================================================
 // REGISTRAR VOTO
