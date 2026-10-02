@@ -1,3 +1,4 @@
+
 import { db } from "../database/mysql.js";
 
 import {
@@ -15,19 +16,33 @@ export async function manejarActualizaciones(
     userState
 ) {
 
-// ================== PREGUNTAR ACTUALIZAR ==================
+    // =====================================================
+    // PREGUNTAR ACTUALIZAR
+    // Acepta S / SI / SÍ
+    // Acepta N / NO
+    // =====================================================
 
-if (userState[from]?.action === "preguntar_actualizar") {
+    if (userState[from]?.action === "preguntar_actualizar") {
 
-    const respuesta = cleanText.toUpperCase();
+        const respuesta = cleanText
+            .trim()
+            .toUpperCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
 
-    if (respuesta === "S") {
+        // =================================================
+        // SI
+        // =================================================
 
-        userState[from].action = "menu_actualizar";
+        if (
+            respuesta === "S" ||
+            respuesta === "SI"
+        ) {
 
-        await sock.sendMessage(from,{
-            text:
-`🛠 ACTUALIZAR DATOS
+            userState[from].action = "menu_actualizar";
+
+            await sock.sendMessage(from, {
+                text: `🛠 ACTUALIZAR DATOS
 
 A) 📲 Celular
 B) 📍 Ubicación
@@ -35,276 +50,329 @@ C) 📝 Observación
 D) ❌ Salir
 
 Respondé A, B, C o D`
+            });
+
+            return true;
+        }
+
+        // =================================================
+        // NO
+        // =================================================
+
+        if (
+            respuesta === "N" ||
+            respuesta === "NO"
+        ) {
+
+            delete userState[from];
+
+            await sock.sendMessage(from, {
+                text: "✅ Listo.\n\nPuede consultar otra cédula."
+            });
+
+            return true;
+        }
+
+        // =================================================
+        // RESPUESTA INVÁLIDA
+        // =================================================
+
+        await sock.sendMessage(from, {
+            text: `✍️ Respondé:
+
+*S* o *SI* para actualizar
+*N* o *NO* para terminar`
         });
 
         return true;
     }
 
 
-    if (respuesta === "N") {
+    // =====================================================
+    // MENU ACTUALIZAR
+    // =====================================================
 
-        delete userState[from];
+    if (userState[from]?.action === "menu_actualizar") {
 
-        await sock.sendMessage(from,{
-            text:
-            "✅ Listo.\n\nPuede consultar otra cédula."
+        const respuesta = cleanText
+            .trim()
+            .toUpperCase();
+
+        const cedula = userState[from].cedula;
+
+
+        // =================================================
+        // A - CELULAR
+        // =================================================
+
+        if (respuesta === "A") {
+
+            userState[from] = {
+                action: "actualizar_celular",
+                cedula
+            };
+
+            await sock.sendMessage(from, {
+                text: "📲 Enviá el nuevo número de celular."
+            });
+
+            return true;
+        }
+
+
+        // =================================================
+        // B - UBICACIÓN
+        // =================================================
+
+        if (respuesta === "B") {
+
+            userState[from] = {
+                action: "actualizar_ubicacion",
+                cedula
+            };
+
+            await sock.sendMessage(from, {
+                text: "📍 Enviá ubicación GPS o link Google Maps."
+            });
+
+            return true;
+        }
+
+
+        // =================================================
+        // C - OBSERVACIÓN
+        // =================================================
+
+        if (respuesta === "C") {
+
+            userState[from] = {
+                action: "actualizar_observacion",
+                cedula
+            };
+
+            await sock.sendMessage(from, {
+                text: "📝 Enviá la observación que deseas guardar."
+            });
+
+            return true;
+        }
+
+
+        // =================================================
+        // D - SALIR
+        // =================================================
+
+        if (respuesta === "D") {
+
+            delete userState[from];
+
+            await sock.sendMessage(from, {
+                text: "✅ Saliste del menú.\nPuede consultar otra cédula."
+            });
+
+            return true;
+        }
+
+
+        // =================================================
+        // OPCIÓN INVÁLIDA
+        // =================================================
+
+        await sock.sendMessage(from, {
+            text: "✍️ Opción inválida. Elegí A, B, C o D."
         });
 
         return true;
     }
 
 
-    await sock.sendMessage(from,{
-        text:
-        "✍️ Respondé S para actualizar o N para salir."
-    });
+    // =====================================================
+    // ACTUALIZAR CELULAR
+    // =====================================================
 
-    return true;
-}
+    if (userState[from]?.action === "actualizar_celular") {
 
-// ================== MENU ACTUALIZAR ==================
+        const cedula = userState[from].cedula;
 
-if (userState[from]?.action === "menu_actualizar") {
+        const nuevoCel = cleanText.replace(/\D/g, "");
 
-    const respuesta = cleanText.toUpperCase();
+        if (!/^\d{8,13}$/.test(nuevoCel)) {
 
-    const cedula = userState[from].cedula;
+            await sock.sendMessage(from, {
+                text: "❌ Número inválido."
+            });
+
+            return true;
+        }
 
 
-    if (respuesta === "A") {
+        await actualizarCelular(
+            telefono,
+            cedula,
+            nuevoCel
+        );
 
-        userState[from]={
-            action:"actualizar_celular",
+
+        userState[from] = {
+            action: "preguntar_actualizar",
             cedula
         };
 
 
-        await sock.sendMessage(from,{
-            text:
-            "📲 Enviá el nuevo número de celular."
-        });
-
-        return true;
-    }
-
-
-    if (respuesta === "B") {
-
-        userState[from]={
-            action:"actualizar_ubicacion",
-            cedula
-        };
-
-
-        await sock.sendMessage(from,{
-            text:
-            "📍 Enviá ubicación GPS o link Google Maps."
-        });
-
-        return true;
-    }
-
-
-    if (respuesta === "C") {
-
-    userState[from] = {
-        action:"actualizar_observacion",
-        cedula
-    };
-
-    await sock.sendMessage(from,{
-        text:
-        "📝 Enviá la observación que deseas guardar."
-    });
-
-    return true;
-}
-
-
-    if (respuesta === "D") {
-
-        delete userState[from];
-
-        await sock.sendMessage(from,{
-            text:
-            "✅ Saliste del menú.\nPuede consultar otra cédula."
-        });
-
-        return true;
-    }
-
-
-    await sock.sendMessage(from,{
-        text:
-        "✍️ Opción inválida. Elegí A, B, C o D."
-    });
-
-    return true;
-}
-
-
-// ================== ACTUALIZAR CELULAR ==================
-
-if (userState[from]?.action === "actualizar_celular") {
-
-    const cedula = userState[from].cedula;
-
-    const nuevoCel = cleanText.replace(/\D/g, "");
-
-    if (!/^\d{8,13}$/.test(nuevoCel)) {
-
-        await sock.sendMessage(from,{
-            text:"❌ Número inválido."
-        });
-
-        return true;
-    }
-
-    
-    await actualizarCelular(
-    telefono,
-    cedula,
-    nuevoCel
-	);
-
-    userState[from] = {
-        action:"preguntar_actualizar",
-        cedula
-    };
-
-await sock.sendMessage(from,{
-    text:
-`✅ Celular actualizado:
+        await sock.sendMessage(from, {
+            text: `✅ Celular actualizado:
 
 ${nuevoCel}
 
 ¿Desea actualizar algo más?
 
-S = Sí
-N = No`
-});
-
-return true;
-
-}
-
-// ================== ACTUALIZAR UBICACIÓN ==================
-
-if (userState[from]?.action === "actualizar_ubicacion") {
-	
-	
-	console.log(
-	"MENSAJE COMPLETO UBICACION:",
-	JSON.stringify(msg.message, null, 2)
-	);
-	
-
-    const cedula = userState[from].cedula;
-
-    let ubicacion = null;
-
-    // ================== UBICACIÓN GPS WHATSAPP ==================
-
-    let locationMsg = null;
-
-
-// ubicación normal
-if (msg.message?.locationMessage) {
-
-    locationMsg = msg.message.locationMessage;
-
-}
-
-
-// ubicación dentro de mensaje efímero
-else if (
-    msg.message?.ephemeralMessage?.message?.locationMessage
-) {
-
-    locationMsg =
-        msg.message.ephemeralMessage.message.locationMessage;
-
-}
-
-
-// ubicación dentro de viewOnce
-else if (
-    msg.message?.viewOnceMessage?.message?.locationMessage
-) {
-
-    locationMsg =
-        msg.message.viewOnceMessage.message.locationMessage;
-
-}
-
-
-if (locationMsg) {
-
-    ubicacion =
-        `${locationMsg.degreesLatitude},${locationMsg.degreesLongitude}`;
-
-} 
-    
-    // ================== GOOGLE MAPS ==================
-
-    else {
-
-        const texto = decodeURIComponent(cleanText);
-
-        console.log("📍 Texto ubicación recibido:", texto);
-
-
-        const urlMatch =
-            texto.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-            texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-
-
-        if (urlMatch) {
-
-            ubicacion =
-                `${urlMatch[1]},${urlMatch[2]}`;
-
-        } 
-        
-        else {
-
-            ubicacion = cleanText.trim();
-
-        }
-    }
-
-
-    if (!ubicacion || ubicacion.length < 3) {
-
-        await sock.sendMessage(from,{
-            text:"❌ No se pudo detectar la ubicación."
+*S* = Sí
+*N* = No`
         });
 
         return true;
     }
 
 
-    console.log("📍 Guardando ubicación:", ubicacion);
-    console.log("📍 Cedula:", cedula);
-    console.log("📍 Operador:", telefono);
+    // =====================================================
+    // ACTUALIZAR UBICACIÓN
+    // =====================================================
+
+    if (userState[from]?.action === "actualizar_ubicacion") {
+
+        console.log(
+            "MENSAJE COMPLETO UBICACION:",
+            JSON.stringify(msg.message, null, 2)
+        );
 
 
-    await actualizarUbicacion(
-    telefono,
-    cedula,
-    ubicacion
-	);
+        const cedula = userState[from].cedula;
+
+        let ubicacion = null;
+
+        // =================================================
+        // UBICACIÓN GPS WHATSAPP
+        // =================================================
+
+        let locationMsg = null;
 
 
-    userState[from] = {
-        action:"preguntar_actualizar",
-        cedula
-    };
+        // Ubicación normal
+        if (msg.message?.locationMessage) {
+
+            locationMsg = msg.message.locationMessage;
+
+        }
 
 
-    await sock.sendMessage(from,{
-        text:
-`✅ Ubicación registrada.
+        // Ubicación dentro de mensaje efímero
+        else if (
+            msg.message?.ephemeralMessage?.message?.locationMessage
+        ) {
+
+            locationMsg =
+                msg.message.ephemeralMessage.message.locationMessage;
+
+        }
+
+
+        // Ubicación dentro de viewOnce
+        else if (
+            msg.message?.viewOnceMessage?.message?.locationMessage
+        ) {
+
+            locationMsg =
+                msg.message.viewOnceMessage.message.locationMessage;
+
+        }
+
+
+        if (locationMsg) {
+
+            ubicacion =
+                `${locationMsg.degreesLatitude},${locationMsg.degreesLongitude}`;
+
+        }
+
+
+        // =================================================
+        // GOOGLE MAPS
+        // =================================================
+
+        else {
+
+            const texto = decodeURIComponent(cleanText);
+
+            console.log(
+                "📍 Texto ubicación recibido:",
+                texto
+            );
+
+
+            const urlMatch =
+                texto.match(
+                    /q=(-?\d+\.\d+),(-?\d+\.\d+)/
+                ) ||
+                texto.match(
+                    /@(-?\d+\.\d+),(-?\d+\.\d+)/
+                );
+
+
+            if (urlMatch) {
+
+                ubicacion =
+                    `${urlMatch[1]},${urlMatch[2]}`;
+
+            } else {
+
+                ubicacion =
+                    cleanText.trim();
+
+            }
+        }
+
+
+        if (!ubicacion || ubicacion.length < 3) {
+
+            await sock.sendMessage(from, {
+                text: "❌ No se pudo detectar la ubicación."
+            });
+
+            return true;
+        }
+
+
+        console.log(
+            "📍 Guardando ubicación:",
+            ubicacion
+        );
+
+        console.log(
+            "📍 Cedula:",
+            cedula
+        );
+
+        console.log(
+            "📍 Operador:",
+            telefono
+        );
+
+
+        await actualizarUbicacion(
+            telefono,
+            cedula,
+            ubicacion
+        );
+
+
+        userState[from] = {
+            action: "preguntar_actualizar",
+            cedula
+        };
+
+
+        await sock.sendMessage(from, {
+            text: `✅ Ubicación registrada.
 
 📍 https://maps.google.com/?q=${ubicacion}
 
@@ -312,57 +380,66 @@ if (locationMsg) {
 
 *S* = Sí
 *N* = No`
-    });
-
-
-    return true;
-}
-
-// ================== ACTUALIZAR OBSERVACIÓN ==================
-
-if (userState[from]?.action === "actualizar_observacion") {
-
-    const cedula = userState[from].cedula;
-
-    const observacion = cleanText.trim();
-
-
-    if (!observacion) {
-
-        await sock.sendMessage(from,{
-            text:"❌ Observación vacía."
         });
+
 
         return true;
     }
 
 
-    console.log("📝 Guardando observación:", observacion);
-    console.log("🆔 Cedula:", cedula);
+    // =====================================================
+    // ACTUALIZAR OBSERVACIÓN
+    // =====================================================
+
+    if (userState[from]?.action === "actualizar_observacion") {
+
+        const cedula = userState[from].cedula;
+
+        const observacion = cleanText.trim();
 
 
-    const resultado = await actualizarObservacion(
-    telefono,
-    cedula,
-    observacion
-	);
+        if (!observacion) {
+
+            await sock.sendMessage(from, {
+                text: "❌ Observación vacía."
+            });
+
+            return true;
+        }
 
 
-	console.log(
-    "Filas actualizadas:",
-    resultado.affectedRows
-	);
+        console.log(
+            "📝 Guardando observación:",
+            observacion
+        );
+
+        console.log(
+            "🆔 Cedula:",
+            cedula
+        );
 
 
-    userState[from] = {
-        action:"preguntar_actualizar",
-        cedula
-    };
+        const resultado = await actualizarObservacion(
+            telefono,
+            cedula,
+            observacion
+        );
 
 
-    await sock.sendMessage(from,{
-        text:
-`📝 Observación guardada correctamente.
+        console.log(
+            "Filas actualizadas:",
+            resultado.affectedRows
+        );
+
+
+        userState[from] = {
+            action: "preguntar_actualizar",
+            cedula
+        };
+
+
+        await sock.sendMessage(from, {
+            text: `📝 Observación guardada correctamente.
 
 "${observacion}"
 
@@ -370,12 +447,16 @@ if (userState[from]?.action === "actualizar_observacion") {
 
 *S* = Sí
 *N* = No`
-    });
+        });
 
 
-    return true;
-}
+        return true;
+    }
 
-return false;
 
+    // =====================================================
+    // NO SE ATENDIÓ NINGUNA ACTUALIZACIÓN
+    // =====================================================
+
+    return false;
 }
